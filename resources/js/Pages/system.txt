@@ -1,0 +1,27 @@
+User
+
+- Application - OK
+- Manage Business -OK
+- Payments - OK
+
+Ceedo
+Notification Log
+List of Vendors - OK
+List of Applications - OK
+Compliance - OK
+
+Mayor
+Reports - all
+
+Treasurer
+Reports - financial
+Payment Processing - OK
+
+Admin
+
+General Feature
+Dashboard
+SMS notif
+Notifications
+Reports
+OTP authentication
