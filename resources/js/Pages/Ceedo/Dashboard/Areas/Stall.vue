@@ -1,7 +1,7 @@
 <script setup>
 import Layout from '../../Layout.vue';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, reactive } from 'vue';
 
 const isAddEstablishmentModal = ref(false);
 const iseditEstablishmentUnit = ref(false);
@@ -12,6 +12,8 @@ const isDrawerOpen = ref(false);
 const canAddUnit = ref(false);
 const isDeleteUnit = ref(false);
 const isSeeMore = ref(false);
+const imagePreviewUrl = ref(null);
+const floorPlanImage = ref(null);
 
 const { props } = usePage();
 
@@ -20,13 +22,24 @@ defineProps({
     name: String,
     id: String,
     establishmentUnits: Array,
-    errors: Object
+    errors: Object,
+    floorplanImage: String
 });
 
 onMounted(() => {
     props.establishmentUnits = [];
     //console.log(props.establishmentUnits.length)
 });
+
+const fullscreenImage = ref(null);
+
+function openImage(image) {
+    fullscreenImage.value = image;
+}
+
+function closeImage() {
+    fullscreenImage.value = null;
+}
 
 const toggleAddModal = () => {
     isAddEstablishmentModal.value = true;
@@ -173,9 +186,9 @@ const getUnitInformation = (unit) => {
     unitForm.establishmentUnitID = unit.id;
     unitForm.images = unit.establishment_images;
     unitForm.status = unit.status;
-    if(unit.business){
+    if (unit.business) {
         owner_id.value = unit.business.profile.id;
-        owner_name.value = getFullName(unit.business.profile.first_name,unit.business.profile.middle_name, unit.business.profile.last_name );
+        owner_name.value = getFullName(unit.business.profile.first_name, unit.business.profile.middle_name, unit.business.profile.last_name);
         owner_business_name.value = unit.business.name;
         owner_business_permit.value = unit.business.permit_number;
     }
@@ -258,6 +271,44 @@ function removeUnit(id) {
     props.establishmentUnits = props.establishmentUnits.filter(unit => unit.id !== id);
 }
 
+const data = reactive({
+    id: props.id,
+    floorPlanImage: null
+});
+
+const handleFloorPlanImageUpload = (event) => {
+    data.floorPlanImage = event.target.files[0];
+    uploadFloorPlan();
+};
+
+function uploadFloorPlan() {
+    router.post(route('ceedo.uploadFloorPlan'), {
+
+        _method: 'put',
+        ...data
+    },
+        {
+            onSuccess: (page) => {
+                if (page.props.flash.success) {
+                    Swal.fire({
+                        toast: true,
+                        icon: 'success',
+                        position: 'top-end',
+                        showConfirmButton: true,
+                        title: page.props.flash.success,
+                    });
+                } else {
+                    Swal.fire({
+                        toast: true,
+                        icon: 'success',
+                        position: 'top-end',
+                        showConfirmButton: true,
+                        title: page.props.flash.error,
+                    });
+                }
+            }
+        });
+}
 </script>
 
 <template>
@@ -320,6 +371,49 @@ function removeUnit(id) {
                 </div>
                 <div v-if="establishments.length <= 0" class="col-span-12 text-center text-xl">
                     No Establishment Added Yet!
+                </div>
+            </div>
+
+            <div class="mt-10">
+                <hr>
+                <div class="text-center text-4xl font-bold my-3">
+                    FLOOR PLAN
+                </div>
+
+                <div class="rounded mb-10 flex justify-center items-center">
+                    <div v-if="!floorplanImage" class="relative">
+                        <label for="image-file"
+                            class="h-60 w-96  absolute transition-all duration-300 opacity-0 hover:opacity-70 hover:bg-gray-10 flex justify-center items-center flex-col text-xl hover:text-white hover:show"
+                            style="cursor: pointer;">
+                            <span class="inline-block"><svg xmlns="http://www.w3.org/2000/svg" fill="none"
+                                    viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                                </svg></span>
+                            <span class="inline-block">Upload Floor Plan</span>
+                        </label>
+                        <div class="h-60 w-96 flex justify-center items-center">
+                            No Floor Plan Added
+                        </div>
+
+                    </div>
+                    <div v-else class="relative">
+                        <span
+                            class="h-60 w-96 absolute transition-all duration-300 opacity-0 hover:opacity-70 hover:bg-gray-10 flex justify-center items-center flex-col text-xl hover:text-white hover:show cursor-pointer">
+                            <div class="flex flex-col gap-3">
+                                <label for="image-file" class="border hover:bg-gray-300 cursor-pointer p-2">
+                                    <span class="inline-block">Change Image</span>
+                                </label>
+                                <label class="border hover:bg-gray-300 cursor-pointer p-2 text-center" @click="openImage(floorplanImage)">
+                                    <span class="inline-block">View Image</span>
+                                </label>
+                            </div>
+                        </span>
+                        <img class="object-none h-60 w-96" :src="'/images/Areas/Establishment/' + floorplanImage"
+                            alt="Floor Plan">
+                    </div>
+                    <input @change="handleFloorPlanImageUpload" id="image-file" type="file" class="hidden"
+                        accept=".jpeg, .jpg, .webp, .svg" />
                 </div>
             </div>
         </div>
@@ -506,27 +600,29 @@ function removeUnit(id) {
                         </div>
                         <div v-if="unitForm.status == 0">
                             <div class="text-center my-3 flex justify-center items-center">
-                                <label for="" class="text-blue-700 cursor-pointer" @click="isSeeMore = !isSeeMore">Acquired
-                                by </label>
-                            <span class="text-blue-700">
-                                <svg v-if="!isSeeMore" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                    stroke-width="1.5" stroke="currentColor" class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                                </svg>
-                                <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                    stroke-width="1.5" stroke="currentColor" class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                </svg>
+                                <label for="" class="text-blue-700 cursor-pointer"
+                                    @click="isSeeMore = !isSeeMore">Acquired
+                                    by </label>
+                                <span class="text-blue-700">
+                                    <svg v-if="!isSeeMore" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                        viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                    </svg>
+                                    <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="size-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                    </svg>
 
-                            </span>
+                                </span>
                             </div>
                             <hr>
                             <div v-if="isSeeMore" class="my-2">
                                 <div class="mb-2 flex justify-between items-center p-2">
                                     <span class="font-bold">Name: </span>
-                                    <span class="text-purple-700"><a target="_blank" :href="route('ceedo.vendorProfile', owner_id)">{{ owner_name }}</a></span>
+                                    <span class="text-purple-700"><a target="_blank"
+                                            :href="route('ceedo.vendorProfile', owner_id)">{{ owner_name }}</a></span>
                                 </div>
                                 <div class="mb-2 flex justify-between items-center p-2">
                                     <span class="font-bold">Business Name: </span>
@@ -567,6 +663,16 @@ function removeUnit(id) {
                     <label for="deleteUnit" class="btn btn-block">Cancel</label>
                 </div>
             </div>
+        </div>
+
+        <!-- Fullscreen Modal -->
+        <div v-if="fullscreenImage" style="z-index: 99999999;"
+            class="fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center">
+            <button class="absolute top-5 right-5 text-white text-3xl" @click="closeImage">
+                ✕
+            </button>
+            <img :src="'/images/Areas/Establishment/' + fullscreenImage" alt="Fullscreen Image"
+                class="max-w-full max-h-full rounded-lg shadow-lg" />
         </div>
 
         <!-- End delete modal unit-->

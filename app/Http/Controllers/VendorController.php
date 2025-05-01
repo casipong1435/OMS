@@ -6,6 +6,7 @@ use App\Models\Barangay;
 use App\Models\Business;
 use App\Models\City;
 use App\Models\EstablishmentUnit;
+use App\Models\NewPermitRequest;
 use App\Models\Payment;
 use App\Models\Profile;
 use App\Models\Province;
@@ -13,6 +14,7 @@ use App\Models\Region;
 use App\Models\RequirementImage;
 use App\Models\User;
 use App\Services\SMSNotificationServices;
+use App\Services\SystemNotificationServices;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -23,152 +25,170 @@ use Inertia\Inertia;
 class VendorController extends Controller
 {
     protected $smsNotification;
+    protected $systemNotification;
 
     public function __construct()
     {
         $this->smsNotification = new SMSNotificationServices();
+        $this->systemNotification = new SystemNotificationServices();
     }
 
     public function dashboard()
     {
         try {
-            // Get the business associated with the authenticated user's profile
-            $business = Business::where('profile_id', auth()->user()->profile->id)->whereIn('status', [1, 3])->first();
+            // Get the businesses associated with the authenticated user's profile
+            $businesses = Business::where('profile_id', auth()->user()->profile->id)
+                ->whereIn('status', [1, 3])
+                ->get();
+
+            $active_businesses = Business::where('profile_id', auth()->user()->profile->id)
+                ->whereIn('status', [1])
+                ->count();
 
             // Handle case when no business is found
-            if (!$business) {
+            if ($businesses->isEmpty()) {
                 return Inertia::render('Vendor/Page/Dashboard', [
-                    'paymentHistory' => [],
-                    'totalAmount' => 0,
-                    'totalMonths' => 0,
-                    'isPermitNotExpired' => null,
-                    'nextPayment' => null,  // or false depending on your use case
-                    'nextPayment' => null,
-                    'overduePayments' => [],
-                    'paymentHistory' => []
+                    'businesses' => [],
+                    'totalPayment' => 0,
+                    'totalOverdue' => 0,
+                    'nextPayments' => [],
+                    'expiredPermits' => [],
                 ]);
             }
 
-            // Get payment history for the business
-            $paymentHistory = Payment::where('business_id', $business->id)->orderBy('due_date', 'desc')->get();
+            $totalPayment = 0;
+            $totalOverdue = 0;
+            $nextPayments = [];
+            $expiredPermits = [];
 
-            // Calculate the total amount of payments
-            $totalAmount = $paymentHistory->sum('amount');
+            foreach ($businesses as $business) {
+                $paymentHistory = Payment::where('business_id', $business->id)->orderBy('due_date', 'desc')->get();
+                $totalPayment += $paymentHistory->sum('amount') + $paymentHistory->sum('penalty');
 
-            $month_interval = 0;
-
-            //dd($business->payment_cycle);
-            switch($business->payment_cycle){
-                case 0:
-                    $month_interval = 1;
-                    break;  // Monthly
-                case 1: 
-                    $month_interval = 3;  // Quarterly
-                    break;
-                case 2:
-                    $month_interval = 6;  // Bi-annual
-                    break;
-                case 3: 
-                    $month_interval = 12;  // Annual
-                    break;
-            }
-
-            $monthCount = $paymentHistory->map(function ($payment) {
-                return Carbon::parse($payment->due_date);
-            })->sort()->pipe(function ($dates) use ($business) {
-                $firstDate = $dates->first(); // Get the earliest due_date
-                $referenceDate = Carbon::parse($business->date_approved); // Reference date
-                return $referenceDate->diffInMonths($firstDate);
-            });
-
-            $totalMonths = $monthCount + $month_interval;
-
-            // Check permit expiration
-            if (!empty($business->permit_expiration_date)) {
-                $permitExpirationDate = Carbon::parse($business->permit_expiration_date);
-                $isPermitNotExpired = Carbon::now('Asia/Manila')->lt($permitExpirationDate);
-            } else {
-                $isPermitNotExpired = false;  // Default to expired if no expiration date
-            }
-
-            // Define the current date
-            $currentDate = now();
-
-            // Get the closure date (nullable)
-            $closureDate = $business->status == 3 ? Carbon::parse($business->date_closed) : null;
-
-            // Determine the boundary date: the earlier of closureDate or currentDate (with advance payment consideration)
-            $boundaryDate = $closureDate ?? $currentDate->copy()->addMonths(1);  // Allow at least one advance payment
-
-            $dateApproved = Carbon::parse($business->date_approved);
-            $paymentCycle = $business->payment_cycle;  // Monthly, quarterly, bi-annual, annual
-
-            // Determine the cycle interval in months
-            $cycleInterval = match ($paymentCycle) {
-                0 => 1,  // Monthly
-                1 => 3,  // Quarterly
-                2 => 6,  // Bi-annual
-                3 => 12,  // Annual
-                default => 1,
-            };
-
-            // Get the last paid payment for this business (if any)
-            $lastPaidPayment = Payment::where('business_id', $business->id)
-                ->orderBy('due_date', 'desc')
-                ->first();
-
-            // Starting point for payment cycles
-            $startDate = $lastPaidPayment
-                ? Carbon::parse($lastPaidPayment->due_date)
-                : $dateApproved->copy();
-
-            $payments = [];  // Array to hold generated payments
-
-            // Generate payments for all cycles that are overdue, due, or advance
-            while ($startDate->lessThan($boundaryDate)) {
-                // Generate a payment for this cycle
-                $dueDate = $startDate->copy()->addMonths($cycleInterval);
-
-                // Adjust the due date if it exceeds the closure date
-                if ($closureDate && $dueDate->greaterThan($closureDate)) {
-                    $dueDate = $closureDate;  // Limit to the closure date
+                // Check if the permit is expired
+                $isPermitExpired = !empty($business->permit_expiration_date) &&
+                    Carbon::parse($business->permit_expiration_date)->lt(now());
+                if ($isPermitExpired) {
+                    $expiredPermits[] = $business->name;  // Add the business name or ID to the expired list
                 }
 
-                // Determine the status based on the due date
+                // Calculate next payment details
+                $currentDate = now();
+                $paymentCycle = $business->payment_cycle;  // Monthly, quarterly, bi-annual, annual
+                $cycleInterval = match ($paymentCycle) {
+                    0 => 1,  // Monthly
+                    1 => 3,  // Quarterly
+                    2 => 6,  // Bi-annual
+                    3 => 12,  // Annual
+                    default => 1,
+                };
+
+                // Get the closure date (nullable)
+                $closureDate = $business->status == 3 ? Carbon::parse($business->date_closed) : null;
+
+                // Determine the boundary date: the earlier of closureDate or currentDate (with advance payment consideration)
+                $boundaryDate = $closureDate ?? $currentDate->copy()->addMonths(1);  // Allow at least one advance payment
+
+                $lastPaidPayment = Payment::where('business_id', $business->id)
+                    ->orderBy('due_date', 'desc')
+                    ->first();
+
+                $startDate = $lastPaidPayment
+                    ? Carbon::parse($lastPaidPayment->due_date)
+                    : Carbon::parse($business->date_approved)->copy();
+
+                $payments = [];  // Array to hold generated payments
+
+                // Generate payments for all cycles that are overdue, due, or advance
+                while ($startDate->lessThan($boundaryDate)) {
+                    // Generate a payment for this cycle
+
+                    $dueDate = $startDate->copy()->addMonths($cycleInterval);
+
+                    // Adjust the due date if it exceeds the closure date
+                    if ($closureDate && $dueDate->greaterThan($closureDate)) {
+                        $dueDate = $closureDate;  // Limit to the closure date
+                    }
+
+                    // Determine the status based on the due date
+                    $status = match (true) {
+                        $dueDate->lessThan($currentDate) => 'Overdue',
+                        $dueDate->equalTo($currentDate) => 'Due',
+                        default => 'Not Yet'
+                    };
+
+                    // Calculate the number of days and the amount
+                    $days = $startDate->diffInDays($dueDate);  // Adjusted for partial cycles
+                    $amount = $business->establishment_unit->establishment->rate * $days;
+                    $penalty = 0;
+
+                    // Check if overdue by more than one cycle
+                    if ($status === 'Overdue') {
+                        // Calculate how many cycles have passed since the due date
+                        $overdueCycles = floor($dueDate->diffInMonths($currentDate) / $cycleInterval);
+
+                        // Sum penalties for each overdue cycle
+                        $penalty = $amount * 0.05 * $overdueCycles;
+                    }
+
+                    $payments[] = [
+                        'status' => $status,
+                    ];
+
+                    // Break the loop if the business is closed after this cycle
+                    if ($closureDate && $dueDate->equalTo($closureDate)) {
+                        break;
+                    }
+
+                    $startDate = $dueDate;  // Move to the next cycle
+                }
+
+                // Determine status for the next payment
                 $status = match (true) {
                     $dueDate->lessThan($currentDate) => 'Overdue',
                     $dueDate->equalTo($currentDate) => 'Due',
                     default => 'Not Yet'
                 };
 
-                // Calculate the number of days and the amount
-                $days = $startDate->diffInDays($dueDate);  // Adjusted for partial cycles
+                // Calculate the penalty for the next payment
+                $days = $startDate->diffInDays($dueDate);
                 $amount = $business->establishment_unit->establishment->rate * $days;
+                $penalty = $status === 'Overdue'
+                    ? $amount * 0.05 * floor($dueDate->diffInMonths($currentDate) / $cycleInterval)
+                    : 0;
 
-                $payments[] = [
+                $nextPayments[] = [
+                    'business_id' => $business->id,
+                    'business_name' => $business->name,
                     'due_date' => $dueDate,
                     'amount' => number_format($amount, 2),
                     'rate' => $business->establishment_unit->establishment->rate,
                     'days' => $days,
                     'status' => $status,
+                    'penalty' => number_format($penalty, 2),
+                    'payments' => $payments
                 ];
 
-                // Break the loop if the business is closed after this cycle
-                if ($closureDate && $dueDate->equalTo($closureDate)) {
-                    break;
-                }
+            }
 
-                $startDate = $dueDate;  // Move to the next cycle
+            //dd($nextPayments);
+
+            foreach ($nextPayments as $nextPayment) {
+                if (isset($nextPayment['payments']) && is_array($nextPayment['payments'])) {
+                    $totalOverdue += count(array_filter($nextPayment['payments'], function ($payment) {
+                        return $payment['status'] !== 'Not Yet';
+                    }));
+                }
             }
 
             // Return data to the dashboard
             return Inertia::render('Vendor/Page/Dashboard', [
-                'paymentHistory' => $paymentHistory,
-                'totalAmount' => $totalAmount,
-                'totalMonths' => $totalMonths,
-                'isPermitNotExpired' => $isPermitNotExpired,
-                'payments' => $payments,
-                'business_status' => $business->status
+                'businesses' => $businesses,
+                'totalPayment' => $totalPayment,
+                'totalOverdue' => $totalOverdue,
+                'nextPayments' => $nextPayments,
+                'expiredPermits' => $expiredPermits,
+                'active_businesses' => $active_businesses
             ]);
         } catch (\Exception $e) {
             // Log the exception for debugging
@@ -181,16 +201,41 @@ class VendorController extends Controller
         }
     }
 
-    public function business()
+    public function business($id)
     {
-        $profile = Profile::with(['user', 'business.establishment_unit.establishment.area', 'business.requirement_image', 'region', 'province', 'city', 'barangay'])->where('id', auth()->user()->profile->id)->first();
-        return Inertia::render('Vendor/Page/Business', compact('profile'));
+        if (auth()->user()->status == 1) {
+            return redirect()->route('user.dashboard');
+        }
+
+        $profile = Profile::whereHas('business', function ($query) use ($id) {
+            $query->where('id', $id);
+        })
+        ->with([
+            'user',
+            'business' => function ($query) use ($id) {
+                $query->where('id', $id);
+            },
+            'business.establishment_unit.establishment.area',
+            'business.requirement_image',
+            'region',
+            'province',
+            'city',
+            'barangay',
+        ])
+        ->first();
+
+        $business_permit_request = NewPermitRequest::where('business_id', $id)->orderBy('created_at', 'desc')->first();
+
+        return Inertia::render('Vendor/Page/Business', compact('profile', 'business_permit_request'));
     }
 
-    public function payment(Request $request)
+    public function payment(Request $request, $id)
     {
+        if (auth()->user()->status == 1) {
+            return redirect()->route('user.dashboard');
+        }
         $business = Business::with(['profile', 'establishment_unit.establishment'])
-            ->where('profile_id', auth()->user()->profile->id)
+            ->where('id', $id)
             ->first();
 
         if ($business) {
@@ -247,6 +292,16 @@ class VendorController extends Controller
                 // Calculate the number of days and the amount
                 $days = $startDate->diffInDays($dueDate);  // Adjusted for partial cycles
                 $amount = $business->establishment_unit->establishment->rate * $days;
+                $penalty = 0;
+
+                // Check if overdue by more than one cycle
+                if ($status === 'Overdue') {
+                    // Calculate how many cycles have passed since the due date
+                    $overdueCycles = floor($dueDate->diffInMonths($currentDate) / $cycleInterval);
+
+                    // Sum penalties for each overdue cycle
+                    $penalty = $amount * 0.05 * $overdueCycles;
+                }
 
                 $payments[] = [
                     'due_date' => $dueDate,
@@ -254,6 +309,7 @@ class VendorController extends Controller
                     'rate' => $business->establishment_unit->establishment->rate,
                     'days' => $days,
                     'status' => $status,
+                    'penalty' => $penalty
                 ];
 
                 // Break the loop if the business is closed after this cycle
@@ -283,10 +339,130 @@ class VendorController extends Controller
 
     public function profile()
     {
+        if (auth()->user()->status == 1) {
+            return redirect()->route('user.dashboard');
+        }
+
         $profile = Profile::with(['business.requirement_image', 'user'])->where('id', auth()->user()->profile->id)->first();
         $regions = Region::get(['regCode', 'regDesc']);
 
         return Inertia::render('Vendor/Page/Profile', compact('profile', 'regions'));
+    }
+
+    public function businessList()
+    {
+        if (auth()->user()->status == 1) {
+            return redirect()->route('user.dashboard');
+        }
+
+        $my_businesses = Business::where('profile_id', auth()->user()->profile->id)->get();
+
+        return Inertia::render('Vendor/Page/BusinessList', compact('my_businesses'));
+    }
+
+    public function paymentList()
+    {
+        if (auth()->user()->status == 1) {
+            return redirect()->route('user.dashboard');
+        }
+
+        // Fetch all businesses with their profiles and establishments
+        $businesses = Business::with(['profile', 'establishment_unit.establishment'])
+            ->where('profile_id', auth()->user()->profile->id)
+            ->whereIn('status', [1, 3])  // Assuming status 1 and 3 represent active or relevant businesses
+            ->get();
+
+        // Define the current date
+        $currentDate = now();
+        $businessPayments = [];
+
+        foreach ($businesses as $business) {
+            $dateApproved = Carbon::parse($business->date_approved);
+            $paymentCycle = $business->payment_cycle;  // Monthly, quarterly, bi-annual, annual
+
+            // Determine the cycle interval in months
+            $cycleInterval = match ($paymentCycle) {
+                0 => 1,  // Monthly
+                1 => 3,  // Quarterly
+                2 => 6,  // Bi-annual
+                3 => 12,  // Annual
+                default => 1,
+            };
+
+            // Get the closure date (nullable)
+            $closureDate = $business->status == 3 ? Carbon::parse($business->date_closed) : null;
+
+            // Determine the boundary date: the earlier of closureDate or currentDate (with advance payment consideration)
+            $boundaryDate = $closureDate ?? $currentDate->copy()->addMonths(1);  // Allow at least one advance payment
+
+            // Get the last paid payment for this business (if any)
+            $lastPaidPayment = Payment::where('business_id', $business->id)
+                ->orderBy('due_date', 'desc')
+                ->first();
+
+            // Starting point for payment cycles
+            $startDate = $lastPaidPayment
+                ? Carbon::parse($lastPaidPayment->due_date)
+                : $dateApproved->copy();
+
+            $payments = [];  // Array to hold generated payments
+
+            // Generate payments for all cycles that are overdue, due, or advance
+            while ($startDate->lessThan($boundaryDate)) {
+                // Generate a payment for this cycle
+                $dueDate = $startDate->copy()->addMonths($cycleInterval);
+
+                // Adjust the due date if it exceeds the closure date
+                if ($closureDate && $dueDate->greaterThan($closureDate)) {
+                    $dueDate = $closureDate;  // Limit to the closure date
+                }
+
+                // Determine the status based on the due date
+                $status = match (true) {
+                    $dueDate->lessThan($currentDate) => 'Overdue',
+                    $dueDate->equalTo($currentDate) => 'Due',
+                    default => 'Advance'
+                };
+
+                // Calculate the number of days and the amount
+                $days = $startDate->diffInDays($dueDate);  // Adjusted for partial cycles
+                $amount = $business->establishment_unit->establishment->rate * $days;
+
+                $payments[] = [
+                    'due_date' => $dueDate,
+                    'amount' => number_format($amount, 2),
+                    'rate' => $business->establishment_unit->establishment->rate,
+                    'days' => $days,
+                    'status' => $status,
+                ];
+
+                // Break the loop if the business is closed after this cycle
+                if ($closureDate && $dueDate->equalTo($closureDate)) {
+                    break;
+                }
+
+                $startDate = $dueDate;  // Move to the next cycle
+            }
+
+            // Collect business data with generated payments
+            if (count($payments) > 0) {
+                $businessPayments[] = [
+                    'business_id' => $business->id,
+                    'business_name' => $business->name,  // Assuming the profile has a 'name' field
+                    'payments' => $payments,
+                    'first_name' => $business->profile->first_name,
+                    'middle_name' => $business->profile->middle_name,
+                    'last_name' => $business->profile->last_name,
+                    'profile_id' => $business->profile->id,
+                    'plate' => $business->plate,
+                    'business_status' => $business->status,
+                ];
+            }
+        }
+
+        return Inertia::render('Vendor/Page/PaymentList', [
+            'businessPayments' => $businessPayments,
+        ]);
     }
 
     public function updateProfile(Request $request)
@@ -452,6 +628,8 @@ class VendorController extends Controller
 
     public function updatePermit(Request $request)
     {
+        $business = Business::where('id', $request->business_id)->first();
+
         try {
             $request->validate([
                 'new_permit_number' => 'required',
@@ -459,47 +637,60 @@ class VendorController extends Controller
                 'new_permit_image' => 'required'
             ]);
 
-            Business::where('id', $request->business_id)->update(['permit_number' => $request->new_permit_number, 'permit_expiration_date' => $request->new_expiration_date]);
+            $old_permit = NewPermitRequest::where('business_id', $request->business_id)->orderBy('created_at', 'desc')->first();
 
-            $old_permit_image = RequirementImage::where('business_id', $request->business_id)->first('business_permit')->business_permit;
-
-            if ($request->new_permit_image) {
-                $filename = time() . '.' . $request->new_permit_image->getClientOriginalExtension();
-
-                $image_data = public_path('images/business/' . $old_permit_image);
-                if (!empty($old_permit_image) && file_exists($image_data)) {
-                    unlink($image_data);
+            if ($old_permit) {
+                if ($request->hasFile('new_permit_image')) {
+                    $filename = time() . '.' . $request->new_permit_image->getClientOriginalExtension();
+                    $image_data = public_path('images/business/' . $old_permit->image);
+                    if (file_exists($image_data)) {
+                        unlink($image_data);
+                        $request->new_permit_image->move('images/business/', $filename);
+                    }
+                } else {
+                    $filename = $old_permit->image;
                 }
 
-                $request->new_permit_image->move('images/business/', $filename);
+                NewPermitRequest::where('business_id', $request->business_id)->update(['business_id' => $request->business_id, 'permit_number' => $request->new_permit_number, 'expiration_date' => $request->new_expiration_date, 'image' => $filename, 'status' => 0]);
             } else {
-                $filename = $old_permit_image;
+                if ($request->new_permit_image) {
+                    $filename = time() . '.' . $request->new_permit_image->getClientOriginalExtension();
+                    $request->new_permit_image->move('images/business/', $filename);
+                } else {
+                    $filename = null;
+                }
+
+                NewPermitRequest::create(['business_id' => $request->business_id, 'permit_number' => $request->new_permit_number, 'expiration_date' => $request->new_expiration_date, 'image' => $filename, 'status' => 0]);
             }
 
-            RequirementImage::where('business_id', $request->business_id)->update(['business_permit' => $filename]);
+            $ceedo = User::where('role', 2)->get();
+            $message = $business->name . ' submitted an updated business permit.';
+            $this->systemNotification->sendNotification($ceedo, $message);
 
-            return redirect()->back()->with('success', 'Business Permit Updated!');
+            return redirect()->back()->with('success', 'Updated Business Permit Submitted!');
         } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
-    public function markasReadNotification($id){
-        try{
+    public function markasReadNotification($id)
+    {
+        try {
             $notification = auth()->user()->notifications->find($id);
             $notification->markAsRead();
             return redirect()->back();
-        }catch(Exception $e){
+        } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
-    public function markasReadAllNotification(){
-        try{
+    public function markasReadAllNotification()
+    {
+        try {
             $user = auth()->user();
             $user->unreadNotifications->markAsRead();
             return redirect()->back();
-        }catch(Exception $e){
+        } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }

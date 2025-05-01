@@ -45,24 +45,28 @@ class GuestController extends Controller
     }
 
     public function establishment($id){
-        $name = Area::find($id)->name;
+        $area = Area::find($id);
+        $name = $area->name;
+        $floorplanImage = $area->floor_plan;
         $establishments = Establishment::with(['establishment_units', 'establishment_units.establishment_images'])->where('area_id', $id)->get();
-        return Inertia::render('GuestPage/Establishment', ['establishments' => $establishments, 'name' => $name,]);
+        return Inertia::render('GuestPage/Establishment', ['establishments' => $establishments, 'name' => $name, 'floorplanImage' => $floorplanImage]);
     }
 
     public function establishment_unit($id){
         //dd(auth()->user()->profile->id);
         $establishment_units = EstablishmentUnit::with('establishment_images')->where('establishment_id', $id)->get();
         $establishment_info = Establishment::with('area')->where('id', $id)->first();
+        $floorplanImage = $establishment_info->area->floor_plan;
+
         //dd($establishment_info);
         if(auth()->check()){
             if(auth()->user()->profile){
-                $inBusiness = Business::where('profile_id', auth()->user()->profile->id)->whereIn('status', [0,1,2])->first();
+                $inBusiness = Business::where('profile_id', auth()->user()->profile->id)->whereIn('status', [0,1,2])->get();
             }
         }else{
-            $inBusiness = null;
+            $inBusiness = [];
         }
-        return Inertia::render('GuestPage/Stall', ['establishment_units' => $establishment_units, 'establishment_info' => $establishment_info, 'inBusiness' => $inBusiness]);
+        return Inertia::render('GuestPage/Stall', ['establishment_units' => $establishment_units, 'establishment_info' => $establishment_info, 'inBusiness' => $inBusiness, 'area_id' => $establishment_info->area_id, 'floorplanImage' => $floorplanImage]);
         
     }
 
@@ -71,12 +75,6 @@ class GuestController extends Controller
         $ordinances = Ordinance::get();
         return Inertia::render('GuestPage/Ordinance', compact('ordinances'));
         
-    }
-
-    
-
-    public function createNewPassword(){
-
     }
 
     

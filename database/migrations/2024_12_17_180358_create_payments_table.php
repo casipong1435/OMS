@@ -16,6 +16,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('business_id')->constrained()->onDelete('cascade');
             $table->decimal('amount', 10, 2);
+            $table->string('days');
+            $table->decimal('penalty', 10, 2)->nullable();
             $table->date('due_date');
             $table->timestamp('paid_at')->nullable(); // Null if unpaid
             $table->timestamps();

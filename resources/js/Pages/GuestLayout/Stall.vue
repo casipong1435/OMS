@@ -7,8 +7,11 @@ defineProps({
     errors: Object,
     establishment_units: Array,
     establishment_info: Array,
-    inBusiness: Array
+    inBusiness: Array,
+    floorplanImage: String
 });
+
+const {area_id} = usePage().props;
 
 const dailyRate = ref(usePage().props.establishment_info.rate);
 
@@ -17,6 +20,8 @@ const stallID = ref(null);
 const stallImages = ref([]);
 const isApplyModalOpen = ref(false);
 const stallStatus = ref(null);
+
+const hasAreaBusiness = ref(usePage().props.inBusiness.map(business => business.area_id));
 
 const getStatusInfo = (status) => {
     switch (status) {
@@ -195,6 +200,18 @@ function getBusinessStatus(status){
             return 'Has already acquired';
     }
 }
+
+
+const fullscreenImage = ref(null);
+
+function openImage(image) {
+    fullscreenImage.value = image;
+}
+
+function closeImage() {
+    fullscreenImage.value = null;
+}
+
 </script>
 
 <template>
@@ -250,6 +267,33 @@ function getBusinessStatus(status){
                             </svg>
                         </span>
                     </label>
+
+                </div>
+
+
+                <div class="relative my-10 flex justify-center items-center" v-if="$page.props.floorplanImage">
+                    <hr>
+                    
+                    <div class="my-10">
+                        
+
+                        <div class="flex justify-center items-center flex-col gap-4">
+                            <span class="font-bold text-4xl text-center">Floor Plan</span>
+                            <div>
+                                <span
+                                    class="h-60 w-96 absolute transition-all duration-300 opacity-0 hover:opacity-70 hover:bg-gray-10 flex justify-center items-center flex-col text-xl hover:text-white hover:show cursor-pointer">
+                                    <div class="flex flex-col gap-3">
+                                        <label class="border hover:bg-gray-300 cursor-pointer p-2 text-center"
+                                            @click="openImage($page.props.floorplanImage)">
+                                            <span class="inline-block">View Image</span>
+                                        </label>
+                                    </div>
+                                </span>
+                                <img class="object-none h-60 w-96"
+                                    :src="'/images/Areas/Establishment/' + $page.props.floorplanImage" alt="Floor Plan">
+                            </div>
+                        </div>
+                    </div>
 
                 </div>
                 
@@ -415,16 +459,21 @@ function getBusinessStatus(status){
             <hr>
             <div class="text-center py-5">Stall ID: {{ stallID }}</div>
         </div>
-        <div class="absolute bottom-5 right-5" v-if="!usePage().props.inBusiness">
-            <label for="applyModal" class="btn bg-green-600 text-white">Apply Now</label>
+        <div class="absolute bottom-5 right-5" v-if="hasAreaBusiness.includes(area_id)">
+            <div class="text-lg" v-if="$page.props.auth.user && $page.props.auth.user.status == 0">You already have business in this area.</div>
+            <div v-else-if="$page.props.auth.user && $page.props.auth.user.status == 1" class="text-lg">Account Restricted</div>
+            <label v-else for="applyModal" class="btn bg-green-600 text-white">Apply Now</label>
+            
         </div>
-        <div class="absolute bottom-5 right-5" v-if="usePage().props.inBusiness">
-            <div class="text-lg">{{ getBusinessStatus(usePage().props.inBusiness.status) }}</div>
+        <div class="absolute bottom-5 right-5" v-else>
+            <label v-if="($page.props.auth.user && $page.props.auth.user.status == 0) || !$page.props.auth.user" for="applyModal" class="btn bg-green-600 text-white">Apply Now</label>
+            <div v-else-if="$page.props.auth.user && $page.props.auth.user.status == 1" class="text-lg">Account Restricted</div>
         </div>
+        
     </div>
 
     <input class="modal-state" id="applyModal" type="checkbox" v-model="isApplyModalOpen" />
-    <div class="modal !h-full w-screen" style="z-index: 99999; margin-top: 0">
+    <div class="modal !h-full w-screen" style="z-index: 99999;">
         <label class="modal-overlay"></label>
         <div class="modal-content">
             <label for="applyModal" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</label>
@@ -563,4 +612,13 @@ function getBusinessStatus(status){
             </div>
         </div>
     </div>
+
+    <div v-if="fullscreenImage" style="z-index: 99999999; margin-top: 0"
+            class="fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center">
+            <button class="absolute top-5 right-5 text-white text-3xl" @click="closeImage">
+                ✕
+            </button>
+            <img :src="'/images/Areas/Establishment/' + fullscreenImage" alt="Fullscreen Image"
+                class="max-w-full max-h-full rounded-lg shadow-lg" />
+        </div>
 </template>

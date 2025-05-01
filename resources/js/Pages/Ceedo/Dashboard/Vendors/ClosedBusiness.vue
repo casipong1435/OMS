@@ -104,7 +104,7 @@ function goToRoute(id){
               </tr>
             </thead>
             <tbody class="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
-              <tr v-for="business in closed_business" :key="business.id" class="text-gray-700 dark:text-gray-400 hover:bg-gray-100 cursor-pointer" @click="goToRoute(business.profile.id)">
+              <tr v-for="business in closed_business" :key="business.id" class="text-gray-700 dark:text-gray-400 hover:bg-gray-100 cursor-pointer" @click="goToRoute(business.id)">
                 <td class="px-4 py-3 text-sm">
                   <span class=" font-semibold rounded-full dark:bg-green-700 dark:text-green-100">
                     {{ business.id }}

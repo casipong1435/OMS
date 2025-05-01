@@ -1,17 +1,15 @@
 <script setup>
 import Container from './Container.vue';
 import { Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 defineProps({
     establishments: Array
+    
 });
 
-function openDrawer(data) {
-
-}
 
 </script>
-
 <template>
     <div class="relative" id="services">
         <div aria-hidden="true" class="absolute inset-0 grid grid-cols-2 -space-x-52 opacity-40 dark:opacity-20">
@@ -77,7 +75,13 @@ function openDrawer(data) {
                         No Section Added Yet!
                     </div>
                 </div>
+
+                
+
+
             </div>
+
+            
         </Container>
     </div>
 </template>

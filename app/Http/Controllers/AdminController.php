@@ -85,7 +85,8 @@ class AdminController extends Controller
     public function users(Request $request)
     {
         $searchInput = $request->input('searchInput');
-        $filter_barangay = $request->input('filter_barangay');
+        $filterType = $request->input('filterType');
+        $filterStatus = $request->input('filterStatus');
         $regions = Region::get(['regCode', 'regDesc']);
         $users = User::with(['profile', 'profile.region', 'profile.province', 'profile.city', 'profile.barangay'])
             ->where('role', 0)
@@ -99,16 +100,17 @@ class AdminController extends Controller
                     });
                 });
             })
-            ->when($filter_barangay, function ($query, $barangay) {
-                $query->whereHas('profile', function ($profileQuery) use ($barangay) {
-                    $profileQuery->where('barangay', $barangay);
-                });
+            ->when($filterType != "", function ($query) use ($filterType) {
+                $query->where('vendor', $filterType);
+            })
+            ->when($filterStatus != "", function ($query) use ($filterStatus) {
+                $query->where('status', $filterStatus);
             })
             ->get();
 
         // dd($users);
 
-        return Inertia::render('Admin/Dashboard/AccountManagement/Users', ['users' => $users, 'regions' => $regions]);
+        return Inertia::render('Admin/Dashboard/AccountManagement/Users', ['users' => $users, 'regions' => $regions, 'filterType' => $filterType, 'filterStatus' => $filterStatus]);
     }
 
     public function addOfficial(Request $request)

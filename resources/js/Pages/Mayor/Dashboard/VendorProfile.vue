@@ -23,7 +23,7 @@ function openCloseResponseModal() {
 
 function submitResponse() {
     if (response.value == 1) {
-        router.put(route('ceedo.reopenBusiness', usePage().props.profile.business.id), {}, {
+        router.put(route('ceedo.reopenBusiness', usePage().props.profile.business[0].id), {}, {
             onSuccess: (page) => {
                 Swal.fire({
                     toast: true,
@@ -36,7 +36,7 @@ function submitResponse() {
             }
         });
     } else {
-        router.put(route('ceedo.closeBusiness', usePage().props.profile.business.id), {remarks: remarks.value}, {
+        router.put(route('ceedo.closeBusiness', usePage().props.profile.business[0].id), {remarks: remarks.value}, {
             onSuccess: page => {
                 Swal.fire({
                     toast: true,
@@ -233,13 +233,13 @@ function getStatusName(status) {
                         Business Information
                     </div>
 
-                    <div class="my-3 text-2xl">Stall # {{ profile.business.establishment_unit_id }}</div>
+                    <div class="my-3 text-2xl">Stall # {{ profile.business[0].establishment_unit_id }}</div>
 
                     <div class="grid grid-cols-3 gap-5">
                         <div class="col-span-3 sm:col-span-2 md:col-span-1">
                             <div class="flex flex-col">
                                 <label for="business_name">Business Name</label>
-                                <input type="text" :value="profile.business.name"
+                                <input type="text" :value="profile.business[0].name"
                                     class="w-full mt-2 p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     id="business_name" disabled>
                             </div>
@@ -248,7 +248,7 @@ function getStatusName(status) {
                         <div class="col-span-3 sm:col-span-2 md:col-span-1">
                             <div class="flex flex-col">
                                 <label for="kind_of_business">Kind of Business</label>
-                                <input type="text" :value="profile.business.kind_of_business"
+                                <input type="text" :value="profile.business[0].kind_of_business"
                                     class="w-full mt-2 p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     id="kind_of_business" disabled>
                             </div>
@@ -257,7 +257,7 @@ function getStatusName(status) {
                         <div class="col-span-3 sm:col-span-2 md:col-span-1">
                             <div class="flex flex-col">
                                 <label for="plate">Business Plate</label>
-                                <input type="text" :value="profile.business.plate"
+                                <input type="text" :value="profile.business[0].plate"
                                     class="w-full mt-2 p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     id="plate" disabled>
                             </div>
@@ -266,7 +266,7 @@ function getStatusName(status) {
                         <div class="col-span-3 sm:col-span-2 md:col-span-1">
                             <div class="flex flex-col">
                                 <label for="permit_number">Permit Number</label>
-                                <input type="text" :value="profile.business.permit_number"
+                                <input type="text" :value="profile.business[0].permit_number"
                                     class="w-full mt-2 p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     id="permit_number" disabled>
                             </div>
@@ -275,7 +275,7 @@ function getStatusName(status) {
                         <div class="col-span-3 sm:col-span-2 md:col-span-1">
                             <div class="flex flex-col">
                                 <label for="dti_reg_number">DTI Registratered Number</label>
-                                <input type="text" :value="profile.business.dti_reg_number"
+                                <input type="text" :value="profile.business[0].dti_reg_number"
                                     class="w-full mt-2 p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     id="kind_of_business" disabled>
                             </div>
@@ -284,7 +284,7 @@ function getStatusName(status) {
                         <div class="col-span-3 sm:col-span-2 md:col-span-1">
                             <div class="flex flex-col">
                                 <label for="plate">Cedula</label>
-                                <input type="text" :value="profile.business.cedula"
+                                <input type="text" :value="profile.business[0].cedula"
                                     class="w-full mt-2 p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     id="plate" disabled>
                             </div>
@@ -292,7 +292,7 @@ function getStatusName(status) {
                         <div class="col-span-3 sm:col-span-2 md:col-span-1">
                             <div class="flex flex-col">
                                 <label for="payment_cycle">Payment Cycle</label>
-                                <input type="text" :value="getPaymentCycle(profile.business.payment_cycle)"
+                                <input type="text" :value="getPaymentCycle(profile.business[0].payment_cycle)"
                                     class="w-full mt-2 p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     id="payment_cycle" disabled>
                             </div>
@@ -300,7 +300,7 @@ function getStatusName(status) {
                         <div class="col-span-3 sm:col-span-2 md:col-span-1">
                             <div class="flex flex-col">
                                 <label for="payment_cycle">Area</label>
-                                <input type="text" :value="profile.business.establishment_unit.establishment.area.name"
+                                <input type="text" :value="profile.business[0].establishment_unit.establishment.area.name"
                                     class="w-full mt-2 p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     id="payment_cycle" disabled>
                             </div>
@@ -308,7 +308,7 @@ function getStatusName(status) {
                         <div class="col-span-3 sm:col-span-2 md:col-span-1">
                             <div class="flex flex-col">
                                 <label for="payment_cycle">Section</label>
-                                <input type="text" :value="profile.business.establishment_unit.establishment.name"
+                                <input type="text" :value="profile.business[0].establishment_unit.establishment.name"
                                     class="w-full mt-2 p-3 border rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     id="payment_cycle" disabled>
                             </div>
@@ -324,38 +324,38 @@ function getStatusName(status) {
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         <div class="relative group cursor-pointer"
-                            @click="openImage(profile.business.requirement_image.cedula)">
-                            <img :src="'/images/business/' + profile.business.requirement_image.cedula"
+                            @click="openImage(profile.business[0].requirement_image.cedula)">
+                            <img :src="'/images/business/' + profile.business[0].requirement_image.cedula"
                                 alt="Gallery Image"
                                 class="object-cover rounded-lg shadow-md transition-transform duration-300 hover:scale-105" />
                         </div>
                         <div class="relative group cursor-pointer"
-                            @click="openImage(profile.business.requirement_image.brgy_clearance)">
-                            <img :src="'/images/business/' + profile.business.requirement_image.brgy_clearance"
+                            @click="openImage(profile.business[0].requirement_image.brgy_clearance)">
+                            <img :src="'/images/business/' + profile.business[0].requirement_image.brgy_clearance"
                                 alt="Gallery Image"
                                 class="object-cover rounded-lg shadow-md transition-transform duration-300 hover:scale-105" />
                         </div>
                         <div class="relative group cursor-pointer"
-                            @click="openImage(profile.business.requirement_image.pmo_ceedo_clearance)">
-                            <img :src="'/images/business/' + profile.business.requirement_image.pmo_ceedo_clearance"
+                            @click="openImage(profile.business[0].requirement_image.pmo_ceedo_clearance)">
+                            <img :src="'/images/business/' + profile.business[0].requirement_image.pmo_ceedo_clearance"
                                 alt="Gallery Image"
                                 class="object-cover rounded-lg shadow-md transition-transform duration-300 hover:scale-105" />
                         </div>
                         <div class="relative group cursor-pointer"
-                            @click="openImage(profile.business.requirement_image.dti_cert)">
-                            <img :src="'/images/business/' + profile.business.requirement_image.dti_cert"
+                            @click="openImage(profile.business[0].requirement_image.dti_cert)">
+                            <img :src="'/images/business/' + profile.business[0].requirement_image.dti_cert"
                                 alt="Gallery Image"
                                 class="object-cover rounded-lg shadow-md transition-transform duration-300 hover:scale-105" />
                         </div>
                         <div class="relative group cursor-pointer"
-                            @click="openImage(profile.business.requirement_image.medical_cert)">
-                            <img :src="'/images/business/' + profile.business.requirement_image.medical_cert"
+                            @click="openImage(profile.business[0].requirement_image.medical_cert)">
+                            <img :src="'/images/business/' + profile.business[0].requirement_image.medical_cert"
                                 alt="Gallery Image"
                                 class="object-cover rounded-lg shadow-md transition-transform duration-300 hover:scale-105" />
                         </div>
                         <div class="relative group cursor-pointer"
-                            @click="openImage(profile.business.requirement_image.business_permit)">
-                            <img :src="'/images/business/' + profile.business.requirement_image.business_permit"
+                            @click="openImage(profile.business[0].requirement_image.business_permit)">
+                            <img :src="'/images/business/' + profile.business[0].requirement_image.business_permit"
                                 alt="Gallery Image"
                                 class="object-cover rounded-lg shadow-md transition-transform duration-300 hover:scale-105" />
                         </div>
@@ -410,40 +410,40 @@ function getStatusName(status) {
                     <label for="statusModal" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</label>
                     <h2 class="text-xl mb-3">Business Status</h2>
 
-                    <div v-if="profile.business.status == 2">
+                    <div v-if="profile.business[0].status == 2">
                         <div class="flex my-2 justify-between gap-5">
                             <span class="font-bold">Status:</span>
                             <span class="badge"
-                                :class="{ 'badge-success': profile.business.status == 1, 'badge-warning': profile.business.status == 0, 'badge-error': profile.business.status == 2 || profile.business.status == 3 }">{{
-                                    getStatusName(profile.business.status) }}</span>
+                                :class="{ 'badge-success': profile.business[0].status == 1, 'badge-warning': profile.business[0].status == 0, 'badge-error': profile.business[0].status == 2 || profile.business[0].status == 3 }">{{
+                                    getStatusName(profile.business[0].status) }}</span>
                         </div>
 
                         <div class="flex my-2 justify-between gap-5">
                             <span class="font-bold">Date Rejected:</span>
-                            <span class="">{{ profile.business.date_rejected ? profile.business.date_rejected : '--'
+                            <span class="">{{ profile.business[0].date_rejected ? profile.business[0].date_rejected : '--'
                                 }}</span>
                         </div>
                     </div>
 
-                    <div v-if="profile.business.status == 3">
+                    <div v-if="profile.business[0].status == 3">
                         <div class="flex my-2 justify-between gap-5">
                             <span class="font-bold">Status:</span>
                             <span class="badge"
-                                :class="{ 'badge-success': profile.business.status == 1, 'badge-warning': profile.business.status == 0, 'badge-error': profile.business.status == 2 || profile.business.status == 3 }">{{
-                                    getStatusName(profile.business.status) }}</span>
+                                :class="{ 'badge-success': profile.business[0].status == 1, 'badge-warning': profile.business[0].status == 0, 'badge-error': profile.business[0].status == 2 || profile.business[0].status == 3 }">{{
+                                    getStatusName(profile.business[0].status) }}</span>
                         </div>
 
                         <div class="flex my-2 justify-between gap-5">
                             <span class="font-bold">Date Closed:</span>
-                            <span class="">{{ profile.business.date_closed ? profile.business.date_closed : '--'
+                            <span class="">{{ profile.business[0].date_closed ? profile.business[0].date_closed : '--'
                                 }}</span>
                         </div>
                     </div>
 
-                    <div v-if="profile.business.status == 2 || profile.business.status == 3">
+                    <div v-if="profile.business[0].status == 2 || profile.business[0].status == 3">
                         <span class="font-bold">Remarks:</span>
                         <textarea name="" id="" class="w-full text-start" cols="30" disabled
-                        v-if="profile.business.status == 2 || profile.business.status == 3" :value="profile.business.remarks">
+                        v-if="profile.business[0].status == 2 || profile.business[0].status == 3" :value="profile.business[0].remarks">
                         </textarea>
                     </div>
 

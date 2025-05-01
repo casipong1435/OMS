@@ -15,11 +15,15 @@ const {
   totalIncome,
   monthlyIncome,
   year_selected,
-  yearlyIncome
+  yearlyIncome,
+  establishments,
+  incomePerStall,
+  newselectedEstablishment
 } = usePage().props;
 
 const years = ref([]);
 const selectedYear = ref(year_selected);
+const selectedEstablishment = ref(newselectedEstablishment ? newselectedEstablishment : establishments.length > 0 ? establishments[0].id : null);
 
 const generateYears = () => {
   const currentYear = new Date().getFullYear();
@@ -33,17 +37,21 @@ const generateYears = () => {
 // Chart instance
 let chartInstance = null;
 
-// Watcher for year selection
-watch(selectedYear, (value) => {
-  if (value) {
+watch([selectedEstablishment, selectedYear], ([newEstablishment, newYear]) => {
+  if(selectedYear || newYear){
     router.get(route('ceedo.dashboard'),
-      { year_selected: value },
+      {
+        newselectedEstablishment: newEstablishment,
+        year_selected: newYear,
+      },
       {
         preserveState: false,
         replace: true,
-      });
+      }
+    );
   }
 });
+
 
 // Chart rendering logic
 const renderChart = (labels, data) => {
@@ -98,6 +106,7 @@ const renderChart = (labels, data) => {
 
 let chartLineInstance = null;
 let chartPieInstance = null;
+let chartLineStallInstance = null;
 
 function getAreaNames() {
   return Object.values(yearlyIncome).map((area) => area.name);
@@ -105,6 +114,14 @@ function getAreaNames() {
 
 function getAreaIncome() {
   return Object.values(yearlyIncome).map((area) => area.total_payments);
+}
+
+function getStallNames() {
+  return incomePerStall.map((stall) => '# ' + stall.name);
+}
+
+function getStallIncome() {
+  return incomePerStall.map((stall) => stall.incomePerYear);
 }
 
 function getAreaColors() {
@@ -194,6 +211,57 @@ const renderPieChart = () => {
   });
 };
 
+// Line Chart Rendering Logic
+const renderLineStallChart = () => {
+  const ctx = document.getElementById('stall-income-chart').getContext('2d');
+
+  if (chartLineStallInstance) {
+    chartInstance.destroy();
+  }
+
+  chartLineStallInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: getStallNames(),
+      datasets: [
+        {
+          label: `Stall Income (${selectedYear.value})`,
+          data: getStallIncome(),
+          borderColor: '#4CAF50',
+          backgroundColor: 'rgba(76, 175, 80, 0.2)',
+          tension: 0.3,
+          fill: true,
+          pointBackgroundColor: '#4CAF50',
+          pointBorderColor: '#388E3C',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Stalls',
+          },
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Income (₱)',
+          },
+          beginAtZero: true,
+        },
+      },
+    },
+  });
+};
+
 // Load chart on mount and update on prop change
 onMounted(() => {
   generateYears();
@@ -202,7 +270,9 @@ onMounted(() => {
     usePage().props.monthlyIncome
   );
   renderLineChart();
+  renderLineStallChart();
   renderPieChart();
+  
 });
 
 watch(() => usePage().props.monthlyIncome, (newIncome) => {
@@ -333,6 +403,21 @@ watch(() => usePage().props.monthlyIncome, (newIncome) => {
       <div class="bg-white shadow-xl rounded-lg p-6 border border-gray-200 mt-6">
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Monthly Income Chart</h2>
         <canvas id="monthly-income-chart"></canvas>
+      </div>
+
+      <!-- Chart Section -->
+      <div class="bg-white shadow-xl rounded-lg p-6 border border-gray-200 mt-6">
+        <div class="flex justify-between">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Establishment Yearly Income Chart</h2>
+          <div class="flex gap-3 items-center">
+            <label for="establishments">Establishment: </label>
+            <select id="establishments" v-model="selectedEstablishment">
+              <option v-for="establishment in establishments" :key="establishment.id" :value="establishment.id">{{ establishment.name }}</option>
+            </select>
+          </div>
+        </div>
+        
+        <canvas id="stall-income-chart"></canvas>
       </div>
 
       <div class="bg-white shadow-lg rounded-lg p-8">

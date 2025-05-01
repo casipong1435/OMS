@@ -1,7 +1,8 @@
 <?php
 
- function getPaymentCycle($cycle){
-    switch($cycle){
+function getPaymentCycle($cycle)
+{
+    switch ($cycle) {
         case 0:
             return 'Monthly';
         case 1:
@@ -24,7 +25,7 @@
     <title>Financial Report</title>
 
     <style>
-        body{
+        body {
             margin-top: 5rem;
         }
         .header,
@@ -35,58 +36,58 @@
         .header {
             top: 0px;
         }
-        .img-left{
+        .img-left {
             position: absolute;
             top: 10;
-            left:10;
+            left: 10;
         }
-        .img-right{
+        .img-right {
             position: absolute;
             top: 10;
-            right:20;
+            right: 20;
         }
-        .header-content{
+        .header-content {
             text-align: center;
         }
-        .tcgc{
+        .tcgc {
             font-weight: bold;
         }
-        .accession{
+        .accession {
             color: red;
         }
-        .title{
+        .title {
             margin-top: 5rem;
             margin-bottom: 2rem;
             font-size: 35px;
             font-weight: bold;
             text-align: center;
         }
-        table{
+        table {
             border-collapse: collapse;
             width: 100%;
-            
         }
-        th, td, tr{
+        th, td, tr {
             border: 1px solid black;
         }
-        th,td{
+        th, td {
             padding: 8px;
             text-align: center;
             font-family: sans-serif;
         }
-        th{
+        th {
             font-size: 12px;
             background: yellow;
         }
-        td{
+        td {
             font-size: 10px;
             color: #302f2f;
         }
     </style>
 </head>
+
 @foreach ($areas as $category)
 <body>
-    
+
     <div class="header">
         <div class="header-content">
             <div class="img-left">
@@ -95,7 +96,7 @@
             <div class="center">
                 <div class="tcgc" style="font-size: 20px">Republic of the Philippines</div>
                 <div class="lrc" style="font-size: 20px">CITY OF TANGUB</div>
-                <div class="maloro" style="font-size: 20px"><i>God-Centered CIty</i></div>
+                <div class="maloro" style="font-size: 20px"><i>God-Centered City</i></div>
                 <div class="tcgc" style="font-size: 20px">City Economic Enterprises Development Office</div>
                 <div class="lrc" style="font-size: 20px">CEEDO</div>
             </div>
@@ -103,12 +104,12 @@
                 <img src="images/bagongpilinas.png" class="bg" width="110" height="110">
             </div>
         </div>
-        
     </div>
-    
+
     <div class="content">
-        <div class="title">Financial Report</div>
-        <div style="font-size: 16px; margin-bottom: 10px">As of January 1, 2024 - December 31, 2024</div>
+        <div class="title">Business Acivity Report</div>
+        <div style="font-size: 16px; margin-bottom: 10px">As of {{$date_from}} - {{$date_to}}</div>
+
         <table>
             <thead>
                 <tr>
@@ -125,33 +126,46 @@
                     <th>Status</th>
                     <th>Remarks</th>
                 </tr>
-            </thead> 
+            </thead>
             <tbody>
+                @php
+                    $totalPaymentForArea = 0;
+                @endphp
+
                 @foreach ($vendors as $business)
                     @if ($business->establishment_unit->establishment->area->id == $category->id)
-                    <tr>
-                        <td>{{ $business->profile->first_name.' '.$business->profile->middle_name.' '.$business->profile->last_name }}</td>
-                        <td>{{ $business->name }}</td>
-                        <td>{{ $business->plate }}</td>
-                        <td>{{ $business->kind_of_business }}</td>
-                        <td>{{ $business->profile->ownBarangay->brgyDesc }}</td>
-                        <td>{{ $business->total_payment }}</td>
-                        <td>{{ getPaymentCycle($business->payment_cycle)  }}</td>
-                        <td>{{ $business->status == 1 ? 'Active' : 'Closed' }}</td>
-                        <td>{{ $business->remarks }}</td>
-                    </tr>
+                        <tr>
+                            <td>{{ $business->profile->first_name.' '.$business->profile->middle_name.' '.$business->profile->last_name }}</td>
+                            <td>{{ $business->name }}</td>
+                            <td>{{ $business->plate }}</td>
+                            <td>{{ $business->kind_of_business }}</td>
+                            <td>{{ $business->profile->ownBarangay->brgyDesc }}</td>
+                            <td>{{ $business->total_payment }}</td>
+                            <td>{{ getPaymentCycle($business->payment_cycle) }}</td>
+                            <td>{{ $business->status == 1 ? 'Active' : 'Closed' }}</td>
+                            <td>{{ $business->remarks }}</td>
+                        </tr>
+                        @php
+                            $totalPaymentForArea += $business->total_payment;
+                        @endphp
                     @endif
-                    
                 @endforeach
-                @if (count($vendors) <= 0)
+
+                @if ($totalPaymentForArea == 0)
                     <tr>
                         <td colspan="9">No Data!</td>
                     </tr>
                 @endif
+
+                <tr>
+                    <td colspan="5" style="font-weight: bold">Total Amount:</td>
+                    <td style="text-align: start">{{ $totalPaymentForArea }}</td>
+                    <td colspan="3" style="text-align: start"></td>
+                </tr>
             </tbody>
         </table>
     </div>
-    
+
 </body>
 @endforeach
 </html>

@@ -14,7 +14,7 @@ let isHistoryMenu = ref(false);
 
  const isVendorsLinks = () => {
 
-    if(component === 'Ceedo/Dashboard/Vendors/AllVendors' || component === 'Ceedo/Dashboard/Vendors/Application' || component === 'Ceedo/Dashboard/Vendors/Compliance' || component === 'Ceedo/Dashboard/Vendors/VendorProfile' || component === 'Ceedo/Dashboard/Vendors/Renewal' || component === 'Ceedo/Dashboard/Vendors/PaymentDue' || component === 'Ceedo/Dashboard/Vendors/ClosedBusiness' || component === 'Ceedo/Dashboard/Vendors/ApplicationInfo')
+    if(component === 'Ceedo/Dashboard/Vendors/AllVendors' || component === 'Ceedo/Dashboard/Vendors/Application' || component === 'Ceedo/Dashboard/Vendors/Compliance' || component === 'Ceedo/Dashboard/Vendors/VendorProfile' || component === 'Ceedo/Dashboard/Vendors/Renewal' || component === 'Ceedo/Dashboard/Vendors/PaymentDue' || component === 'Ceedo/Dashboard/Vendors/ClosedBusiness' || component === 'Ceedo/Dashboard/Vendors/ApplicationInfo' || component === 'Ceedo/Dashboard/Vendors/BusinessInfo')
     {
         isVendorsMenuOpen.value = true;
         return true;
@@ -98,10 +98,10 @@ const isHistoryLinks = () => {
                 <ul class="p-2 mt-2 space-y-2 overflow-hidden text-sm font-medium text-gray-500 rounded-md shadow-inner bg-gray-50 dark:text-gray-400 dark:bg-gray-900"
                     aria-label="submenu">
                     <li class="px-2 py-1 transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200">
-                        <Link class="w-full" :class="{'text-gray-800 disabled:opacity-50 pointer-events-none' : component === 'Ceedo/Dashboard/Vendors/AllVendors' || component === 'Ceedo/Dashboard/Vendors/VendorProfile'}" :href="route('ceedo.vendors')">All Vendors</Link>
+                        <Link class="w-full" :class="{'text-gray-800 disabled:opacity-50 pointer-events-none' : component === 'Ceedo/Dashboard/Vendors/AllVendors' || component === 'Ceedo/Dashboard/Vendors/VendorProfile'}" :href="route('ceedo.vendors')">Businesses</Link>
                     </li>
                     <li class="px-2 py-1 transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200">
-                        <Link class="w-full" :class="{'text-gray-800 disabled:opacity-50 pointer-events-none' : component === 'Ceedo/Dashboard/Vendors/Application' || component === 'Ceedo/Dashboard/Vendors/ApplicationInfo'}" :href="route('ceedo.applications')">
+                        <Link class="w-full" :class="{'text-gray-800 disabled:opacity-50 pointer-events-none' : component === 'Ceedo/Dashboard/Vendors/Application' || component === 'Ceedo/Dashboard/Vendors/ApplicationInfo' || component === 'Ceedo/Dashboard/Vendors/BusinessInfo'} " :href="route('ceedo.applications')">
                             Applications
                         </Link>
                     </li>

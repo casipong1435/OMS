@@ -41,11 +41,24 @@ class OfficialLoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('username', 'password'), $this->boolean('remember'))) {
+        // Attempt to find the user with the provided username and password
+        $credentials = $this->only('username', 'password');
+
+        if (!Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'username' => trans('auth.failed'),
+            ]);
+        }
+
+        // After successful authentication, ensure the user's role is not 0
+        $user = Auth::user();
+        if ($user->role == 'user') {
+            Auth::logout();  // Log the user out
+
+            throw ValidationException::withMessages([
+                'username' => trans('only officials can authenticate!'),
             ]);
         }
 
@@ -54,12 +67,14 @@ class OfficialLoginRequest extends FormRequest
 
     /**
      * Ensure the login request is not rate limited.
+     * 
+     * 
      *
      * @throws \Illuminate\Validation\ValidationException
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (!RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
 
@@ -80,6 +95,6 @@ class OfficialLoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('username')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('username')) . '|' . $this->ip());
     }
 }

@@ -7,7 +7,6 @@ defineProps({
   businessPayments: Array
 });
 
-const isOpenPayModal = ref(false);
 // Function to navigate back
 function goBack() {
   window.history.back();
@@ -17,39 +16,6 @@ const getFullName = (first_name, middle_name, last_name) => {
   return first_name + " " + (middle_name != null ? middle_name + " " : "") + last_name;
 };
 
-
-const form = useForm({
-  vendor: null,
-  business_id: null,
-  name: null,
-  amount: null,
-  due_date:null
-});
-
-function openPayModal(payment, business){
-  isOpenPayModal.value = true;
-  form.vendor = getFullName(business.first_name, business.middle_name, business.last_name)
-  form.business_id = business.business_id;
-  form.name = business.business_name;
-  form.amount = payment.amount;
-  form.due_date = payment.due_date;
-}
-
-function pay(){
-  form.post(route('treasurer.pay'), 
-    {
-        onSuccess: (page) => {
-        Swal.fire({
-          toast: true,
-          icon: 'success',
-          position: 'top-end',
-          showConfirmButton: true,
-          title: page.props.flash.success,
-        });
-        isOpenPayModal.value = false;
-      }
-    });
-}
 
 const searchQuery = ref('');
 const filteredPayments = ref([...usePage().props.businessPayments]);
@@ -157,40 +123,8 @@ function gotoPaymentPortal(id){
           </div>
         </div>
       </div>
+      
     </div>
 
-    <input class="modal-state" id="isOpenPayModal" type="checkbox" v-model="isOpenPayModal" />
-    <div class="modal">
-      <label class="modal-overlay" for="isOpenPayModal"></label>
-      <div class="modal-content flex flex-col gap-5">
-        <label for="isOpenPayModal" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</label>
-        <h2 class="text-xl mb-2">Payment Information</h2>
-        <div class="px-3">
-          <div class="flex justify-between items-center gap-3 mb-2">
-            <span class="font-bold">Vendor:</span>
-            <span>{{ form.vendor }}</span>
-          </div>
-
-          <div class="flex justify-between items-center gap-3 mb-2">
-            <span class="font-bold">Business Name:</span>
-            <span>{{ form.name }}</span>
-          </div>
-
-          <div class="flex justify-between items-center gap-3 mb-2">
-            <span class="font-bold">Amount:</span>
-            <span>{{ '₱'+form.amount }}</span>
-          </div>
-
-          <div class="flex justify-between items-center gap-3 mb-2">
-            <span class="font-bold">Due Date:</span>
-            <span>{{ new Date(form.due_date).toLocaleDateString() }}</span>
-          </div>
-        </div>
-        <div class="flex gap-3">
-          <button class="btn btn-primary btn-block" @click="pay()">Pay Now</button>
-          <button class="btn btn-block" @click="isOpenPayModal = false">Cancel</button>
-        </div>
-      </div>
-    </div>
   </Layout>
 </template>

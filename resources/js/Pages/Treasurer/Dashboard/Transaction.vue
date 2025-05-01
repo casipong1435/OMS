@@ -71,6 +71,8 @@ watch(searchQuery, (value) => {
                 <th class="px-4 py-3">Vendor's Name</th>
                 <th class="px-4 py-3">Due Date</th>
                 <th class="px-4 py-3">Amount</th>
+                <th class="px-4 py-3">Penalty</th>
+                <th class="px-4 py-3">Days</th>
                 <th class="px-4 py-3">Paid At</th>
                 <th class="px-4 py-3">Remarks</th>
               </tr>
@@ -89,14 +91,15 @@ watch(searchQuery, (value) => {
                 </td>
                 <td class="px-4 py-3">{{ transaction.due_date }}</td>
                 <td class="px-4 py-3 text-green-500 font-bold">{{ '₱' + Number(transaction.amount) }}</td>
-                <td class="px-4 py-3">{{ transaction.paid_at }}</td>
+                <td class="px-4 py-3 text-red-500 font-bold">{{ '₱' + Number(transaction.penalty) }}</td><td class="px-4 py-3 font-bold">{{  Number(transaction.days) }}</td>
+                <td class="px-4 py-3">{{ new Date(transaction.paid_at).toLocaleString() }}</td>
                 <td class="px4 py-3" :class="{'text-red-700':remark != 'Not Yet'}">
                   {{ transaction.remark }}
                 </td>
               </tr>
 
               <tr v-if="filteredTransactions.length === 0">
-                <td colspan="5" class="px-4 py-3 text-center text-gray-500">No Transactions Found</td>
+                <td colspan="7" class="px-4 py-3 text-center text-gray-500">No Transactions Found</td>
               </tr>
             </tbody>
           </table>

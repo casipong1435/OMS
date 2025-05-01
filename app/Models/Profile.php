@@ -56,9 +56,9 @@ class Profile extends Model
         return $this->belongsTo(Barangay::class, 'barangay', 'brgyCode');
     }
 
-    public function business() : HasOne
+    public function business() : HasMany
     {
-        return $this->hasOne(Business::class);
+        return $this->hasMany(Business::class);
     }
     
 

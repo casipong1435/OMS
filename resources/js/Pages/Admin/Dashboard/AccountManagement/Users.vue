@@ -11,14 +11,23 @@ let isEdit = ref(false);
 let isAddressHidden = ref(true);
 let user_id = null;
 const searchInput = ref('');
-const filter_barangay = ref('');
+const filterType = ref("");
+const filterStatus = ref("");
 
 defineProps({
   users: Array,
   regions: Array,
-  errors: Object
+  errors: Object,
+  filterStatus: String,
+  filterType: String
 });
 
+onMounted(() => {
+  const loadFilterType = usePage().props.filterType?? "";
+  const loadFilterStatus = usePage().props.filterStatus?? "";
+  filterStatus.value = loadFilterStatus;
+  filterType.value = loadFilterType;
+});
 const { props } = usePage();
 
 const form = useForm({
@@ -134,14 +143,24 @@ watch(searchInput, (value) => {
     })
 });
 
-watch(filter_barangay, (value) => {
+watch(filterType, (value) => {
   router.get(route('admin.users'),
-    { filter_barangay: value },
+    { filterType: value },
     {
       preserveState: true,
       replace: true
     })
 });
+
+watch(filterStatus, (value) => {
+  router.get(route('admin.users'),
+    { filterStatus: value },
+    {
+      preserveState: true,
+      replace: true
+    })
+});
+
 
 const provinces = ref([]);
 const cities = ref([]);
@@ -158,52 +177,52 @@ const validateNumber = (event) => {
 };
 
 const fetchProvinces = async () => {
-    if (!form.region) return;
-    const response = await axios.get(`/api/provinces/${form.region}`);
-    provinces.value = response.data;
-    //form.province = null; // Reset province
-    //cities.value = []; // Clear cities
-    //barangays.value = []; // Clear barangays
+  if (!form.region) return;
+  const response = await axios.get(`/api/provinces/${form.region}`);
+  provinces.value = response.data;
+  //form.province = null; // Reset province
+  //cities.value = []; // Clear cities
+  //barangays.value = []; // Clear barangays
 };
 
 const fetchCities = async () => {
-    if (!form.province) return;
-    const response = await axios.get(`/api/cities/${form.province}`);
-    cities.value = response.data;
-    //console.log();
-    //form.city = null; // Reset city
-    //barangays.value = []; // Clear barangays
+  if (!form.province) return;
+  const response = await axios.get(`/api/cities/${form.province}`);
+  cities.value = response.data;
+  //console.log();
+  //form.city = null; // Reset city
+  //barangays.value = []; // Clear barangays
 };
 
 const fetchBarangays = async () => {
-    if (!form.city) return;
-    const response = await axios.get(`/api/barangays/${form.city}`);
-    barangays.value = response.data;
-    //form.barangay = null; // Reset barangay
+  if (!form.city) return;
+  const response = await axios.get(`/api/barangays/${form.city}`);
+  barangays.value = response.data;
+  //form.barangay = null; // Reset barangay
 };
 
 watch(() => form.region, async (region) => {
-  if(region){
+  if (region) {
     await fetchProvinces();
-  }else{
+  } else {
     provinces.value = [];
     form.province = null;
   }
 });
 
 watch(() => form.province, async (province) => {
-  if(province){
+  if (province) {
     await fetchCities();
-  }else{
+  } else {
     cities.value = [];
     form.city = null;
   }
 });
 
 watch(() => form.city, async (city) => {
-  if(city){
+  if (city) {
     await fetchBarangays();
-  }else{
+  } else {
     barangays.value = [];
     form.barangay = null;
   }
@@ -214,11 +233,11 @@ watch(() => form.city, async (city) => {
 
 <template>
 
-  <Head title="Users List" />
+  <Head title="Vendors/Applicants List" />
   <Layout>
     <div class="container px-6 mx-auto grid">
       <h2 class="my-6 text-2xl font-semibold text-gray-700 dark:text-gray-200">
-        User Accounts
+        Vendors/Applicants
       </h2>
       <!-- CTA -->
 
@@ -226,9 +245,9 @@ watch(() => form.city, async (city) => {
         <div class="w-full overflow-x-auto">
           <div class="mb-2 p-2 ">
 
-            <div class="block sm:flex sm:justify-end sm:items-center gap-3">
-              
-              <div class="relative w-full max-w-xl focus-within:text-orange-500 overflow-x-auto mt-2 md:mt-0">
+            <div class="flex flex-col lg:flex-row justify-between items-center">
+              <div
+                class="relative mb-3 lg:mb-0 focus-within:text-orange-500 overflow-x-auto mt-2 md:mt-0 w-full lg:w-1/3">
                 <div class="absolute inset-y-0 flex items-center pl-2">
                   <svg class="w-4 h-4" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd"
@@ -240,6 +259,25 @@ watch(() => form.city, async (city) => {
                   class="w-full pl-8 pr-2 text-sm text-gray-700 focus:border-orange-600 rounded focus:rounded outline-none"
                   type="text" placeholder="Search User" aria-label="Search" />
               </div>
+              <div class="flex gap-2 justify-end flex-col sm:flex-row">
+                <div class="flex gap-2 items-center">
+                  <label for="type">Type: </label>
+                  <select  id="type" v-model="filterType">
+                    <option value="">All</option>
+                    <option value="0">Applicant</option>
+                    <option value="1">Vendor</option>
+                  </select>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <label for="status">Status: </label>
+                  <select  id="status" v-model="filterStatus">
+                    <option value="">All</option>
+                    <option value="0">Active</option>
+                    <option value="1">Restricted</option>
+                  </select>
+                </div>
+              </div>
+
             </div>
           </div>
           <table class="w-full whitespace-no-wrap">
@@ -248,9 +286,9 @@ watch(() => form.city, async (city) => {
                 class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
                 <th class="px-4 py-3">ID</th>
                 <th class="px-4 py-3">Name</th>
-                <th class="px-4 py-3">Date of Birth</th>
-                <th class="px-4 py-3">Address</th>
                 <th class="px-4 py-3">Mobile Number</th>
+                <th class="px-4 py-3">Type</th>
+                <th class="px-4 py-3">Status</th>
                 <th class="px-4 py-3">Action</th>
               </tr>
             </thead>
@@ -264,7 +302,7 @@ watch(() => form.city, async (city) => {
                 <td class="px-4 py-3">
                   <div class="flex items-center text-sm">
                     <div class="relative hidden w-8 h-8 mr-3 rounded-full md:block">
-                      <img class="object-cover w-full h-full rounded-full" src="/images/avatars/avatar.png" alt=""
+                      <img class="object-cover w-full h-full rounded-full" :src="user.profile.image ? '/profile_images/'+user.profile.image : '/images/avatars/avatar.png'" alt=""
                         loading="lazy" />
                       <div class="absolute inset-0 rounded-full shadow-inner" aria-hidden="true"></div>
                     </div>
@@ -276,19 +314,17 @@ watch(() => form.city, async (city) => {
                 </td>
                 <td class="px-4 py-3 text-sm">
                   <span class="px-2 py-1 font-semibold rounded-full dark:bg-green-700 dark:text-green-100">
-                    {{ user.profile.date_of_birth }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-sm">
-                  <span class="px-2 py-1 font-semibold rounded-full dark:bg-green-700 dark:text-green-100"
-                    :class="{ 'text-gray-400': !user.profile.province }">
-                    {{ !user.profile.province ? 'Not Set' : getAddress(user.profile.barangay.brgyDesc,user.profile.city.citymunDesc) }}
-
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-sm">
-                  <span class="px-2 py-1 font-semibold rounded-full dark:bg-green-700 dark:text-green-100">
                     {{ user.mobile_number }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="px-2 py-1 font-semibold rounded-full dark:bg-green-700 dark:text-green-100 badge" :class="{'badge-success': user.vendor == 1}">
+                    {{ user.vendor == 0 ? 'Applicant': 'Vendor' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="px-2 py-1 font-semibold rounded-full dark:bg-green-700 dark:text-green-100" :class="user.status == 0 ? 'text-green-600' : 'text-red-600'">
+                    {{ user.status == 0 ? 'Active' : 'Restricted' }}
                   </span>
                 </td>
                 <td class="px-4 py-3 text-xs">
@@ -319,7 +355,7 @@ watch(() => form.city, async (city) => {
                 </td>
               </tr>
               <tr v-if="users.length <= 0" class="text-center">
-                <td colspan="6" class="p-2">No Users Yet!</td>
+                <td colspan="8" class="p-2">No Users Yet!</td>
               </tr>
             </tbody>
           </table>
@@ -439,7 +475,8 @@ watch(() => form.city, async (city) => {
             </div>
             <div class="col-span-6 md:col-span-3">
               <label for="province" class="ml-2">Province</label>
-              <select id="province" class="select input-ghost-primary" :disabled="!isEdit" v-model="form.province" @change="fetchCities">
+              <select id="province" class="select input-ghost-primary" :disabled="!isEdit" v-model="form.province"
+                @change="fetchCities">
                 <option v-for="province in provinces" :key="province.provCode" :value="province.provCode">
                   {{ province.provDesc }}
                 </option>
@@ -448,7 +485,8 @@ watch(() => form.city, async (city) => {
             </div>
             <div class="col-span-6 md:col-span-3">
               <label for="city" class="ml-2">City/Municipality</label>
-              <select id="city" class="select input-ghost-primary" :disabled="!isEdit" v-model="form.city" @change="fetchBarangays">
+              <select id="city" class="select input-ghost-primary" :disabled="!isEdit" v-model="form.city"
+                @change="fetchBarangays">
                 <option v-for="city in cities" :key="city.citymunCode" :value="city.citymunCode">
                   {{ city.citymunDesc }}
                 </option>
@@ -468,9 +506,9 @@ watch(() => form.city, async (city) => {
               <label for="purok" class="ml-2">Purok/Street</label>
               <input class="input-ghost-primary input" type="text" :disabled="!isEdit" id="purok"
                 v-model="form.purok" />
-                <InputError :message="errors.purok" />
+              <InputError :message="errors.purok" />
             </div>
-            
+
           </div>
           <div class="col-span-6 flex gap-3">
             <button type="submit" class="btn btn-primary btn-block"

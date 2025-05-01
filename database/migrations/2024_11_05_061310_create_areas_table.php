@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('long')->nullable();
             $table->string('image')->nullable();
             $table->string('description')->nullable();
+            $table->string('floor_plan')->nullable();
             $table->timestamps();
         });
     }

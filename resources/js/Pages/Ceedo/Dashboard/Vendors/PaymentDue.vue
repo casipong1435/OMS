@@ -113,6 +113,7 @@ const SendPaymentReminder = (index, business) => {
                 <th class="px-4 py-3">Business Status</th>
                 <th class="px-4 py-3">Due Date</th>
                 <th class="px-4 py-3">Amount Due</th>
+                <th class="px-4 py-3">Penalty</th>
                 <th class="px-4 py-3">Status</th>
                 <th class="px-4 py-3"></th>
               </tr>
@@ -135,6 +136,13 @@ const SendPaymentReminder = (index, business) => {
                   <ul>
                     <li v-for="(payment, pIndex) in business.payments" :key="pIndex">
                        {{'₱' + payment.amount }}
+                    </li>
+                  </ul>
+                </td>
+                <td class="px-4 py-3">
+                  <ul>
+                    <li v-for="(payment, pIndex) in business.payments" :key="pIndex">
+                       {{'₱' + payment.penalty.toFixed(2) }}
                     </li>
                   </ul>
                 </td>

@@ -84,7 +84,7 @@ const closeProfileMenu = () => {
       <div aria-hidden="true" class="flex space-x-1">
         <div class="h-6 w-2 bg-orange-700"></div>
       </div>
-      <span class="text-2xl font-bold text-gray-900 dark:text-white">EEMMS</span>
+      <span class="text-2xl font-bold text-gray-900 dark:text-white">OMS</span>
       </Link>
       <Navigation/>
     </div>

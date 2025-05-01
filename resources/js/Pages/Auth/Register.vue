@@ -128,15 +128,6 @@ const validateNumber = (event) => {
                             </div>
 
                             <div class="col-span-6 sm:col-span-3">
-                                <label for="middle_name" class="block text-sm font-medium text-gray-700">
-                                    Middle Name
-                                </label>
-
-                                <input type="text" id="middle_name" v-model="form.middle_name"
-                                    class="mt-1 w-full rounded-md border-gray-200 bg-white text-sm text-gray-700 shadow-sm" />
-                            </div>
-
-                            <div class="col-span-6 sm:col-span-3">
                                 <label for="LastName" class="block text-sm font-medium text-gray-700">
                                     Last Name *
                                 </label>
@@ -145,6 +136,17 @@ const validateNumber = (event) => {
                                     class="mt-1 w-full rounded-md border-gray-200 bg-white text-sm text-gray-700 shadow-sm"
                                     :class="{ 'bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500': errors.last_name }" />
                             </div>
+                            
+                            <div class="col-span-6 sm:col-span-3">
+                                <label for="middle_name" class="block text-sm font-medium text-gray-700">
+                                    Middle Name
+                                </label>
+
+                                <input type="text" id="middle_name" v-model="form.middle_name"
+                                    class="mt-1 w-full rounded-md border-gray-200 bg-white text-sm text-gray-700 shadow-sm" />
+                            </div>
+
+                            
 
                             <div class="col-span-6 sm:col-span-3">
                                 <label for="date_of_birth" class="block text-sm font-medium text-gray-700">

@@ -236,12 +236,25 @@ class TreasurerController extends Controller
             $days = $startDate->diffInDays($dueDate);  // Adjusted for partial cycles
             $amount = $business->establishment_unit->establishment->rate * $days;
 
+            // Initialize penalty
+            $penalty = 0;
+
+            // Check if overdue by more than one cycle
+            if ($status === 'Overdue') {
+                // Calculate how many cycles have passed since the due date
+                $overdueCycles = floor($dueDate->diffInMonths($currentDate) / $cycleInterval);
+        
+                // Sum penalties for each overdue cycle
+                $penalty = $amount * 0.05 * $overdueCycles;
+            }
+
             $payments[] = [
                 'due_date' => $dueDate,
                 'amount' => number_format($amount, 2),
                 'rate' => $business->establishment_unit->establishment->rate,
                 'days' => $days,
                 'status' => $status,
+                'penalty' => $penalty
             ];
 
             // Break the loop if the business is closed after this cycle
@@ -257,7 +270,7 @@ class TreasurerController extends Controller
 
     public function transaction()
     {
-        $paymentHistory = Payment::with('business.profile')->orderBy('due_date', 'desc')->get();
+        $paymentHistory = Payment::with('business.profile')->orderBy('paid_at', 'desc')->get();
         // dd($paymentHistory);
         return Inertia::render('Treasurer/Dashboard/Transaction', compact('paymentHistory'));
     }
@@ -315,15 +328,20 @@ class TreasurerController extends Controller
         // dd($request['selectedPayment']);
         try {
             $business = Business::with('profile.user')->where('id', $request->business_id)->first();
-
+            //dd($request['selectedPayment']);
             foreach ($request['selectedPayment'] as $payment) {
+                $penalty = round($payment['penalty'], 2);
                 $values = [
                     'business_id' => $request->business_id,
                     'amount' => str_replace(',', '', $payment['amount']),
                     'due_date' => Carbon::parse($payment['due_date']),
                     'paid_at' => Carbon::now('Asia/Manila'),
-                    'remark' => $payment['status']
+                    'remark' => $payment['status'],
+                    'days' => $payment['days'],
+                    'penalty' => $penalty
                 ];
+
+                $sum = (float)str_replace(',', '', $payment['amount']) + $penalty;
 
                 Payment::create($values);
 
@@ -331,6 +349,7 @@ class TreasurerController extends Controller
                     'recepient' => $business->profile->user->mobile_number,
                     'due_date' => Carbon::parse($payment['due_date'])->format('m/d/Y'),
                     'amount' => $payment['amount'],
+                    'penalty' => $penalty,
                     'paid_at' => Carbon::now('Asia/Manila')
                 ];
 
@@ -338,10 +357,11 @@ class TreasurerController extends Controller
 
                 $user = User::where('id', $business->profile->user_id)->first();
                 $ceedo = User::where('role', 2)->get();
+                
 
-                $message_to_user = "Thank You for Paying! You paid for ".Carbon::parse($payment['due_date'])->format('m/d/Y')." amounting to ₱".$payment['amount'].".";
+                $message_to_user = "Thank You for Paying! You paid for ".Carbon::parse($payment['due_date'])->format('m/d/Y')." amounting to ₱".$sum.".";
 
-                $message_to_ceedo = $business->profile->first_name." ".$business->profile->last_name." paid for ".Carbon::parse($payment['due_date'])->format('m/d/Y')." amounting to ₱".$payment['amount'].".";
+                $message_to_ceedo = $business->profile->first_name." ".$business->profile->last_name." paid for ".Carbon::parse($payment['due_date'])->format('m/d/Y')." amounting to ₱".$sum.".";
 
 
                 $this->systemNotification->sendNotification($user, $message_to_user);

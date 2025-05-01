@@ -42,8 +42,8 @@ const formatDate = (date) => {
     return `${year}-${month}-${day}`;
 };
 
-function goToRoute(id){
-  window.location.href = route('ceedo.vendorProfile', id);
+function goToRoute(id, business_id){
+  window.location.href = route('ceedo.vendorProfile', {id:id, business_id:business_id});
 }
 
 </script>
@@ -104,7 +104,7 @@ function goToRoute(id){
               </tr>
             </thead>
             <tbody class="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
-              <tr v-for="vendor in vendors" :key="vendor.id" class="text-gray-700 dark:text-gray-400 hover:bg-gray-100 cursor-pointer" @click="goToRoute(vendor.profile.id)">
+              <tr v-for="vendor in vendors" :key="vendor.id" class="text-gray-700 dark:text-gray-400 hover:bg-gray-100 cursor-pointer" @click="goToRoute(vendor.profile.id, vendor.id)">
                 <td class="px-4 py-3 text-sm">
                   <span class=" font-semibold rounded-full dark:bg-green-700 dark:text-green-100">
                     {{ vendor.id }}

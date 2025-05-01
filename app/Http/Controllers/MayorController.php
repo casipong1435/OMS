@@ -123,9 +123,24 @@ class MayorController extends Controller
         return Inertia::render('Mayor/Dashboard/Sections', compact('name', 'vendors', 'area_id'));
     }
 
-    public function vendorProfile($id)
+    public function vendorProfile($id, $business_id)
     {
-        $profile = Profile::with(['user', 'business.establishment_unit.establishment.area', 'business.requirement_image', 'region', 'province', 'city', 'barangay'])->where('id', $id)->first();
+        $profile = Profile::with([
+            'user',
+            'business' => function ($query) use ($business_id) {
+                $query->where('id', $business_id);
+            },
+            'business.establishment_unit.establishment.area',
+            'business.requirement_image',
+            'region',
+            'province',
+            'city',
+            'barangay',
+        ])
+        ->where('id', $id)
+        ->first();
+
+       
         return Inertia::render('Mayor/Dashboard/VendorProfile', compact('profile'));
     }
 

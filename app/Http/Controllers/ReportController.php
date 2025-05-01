@@ -30,13 +30,13 @@ class ReportController extends Controller
             $query->whereIn('area_id', $category);
         })
         ->get()
-        ->map(function ($vendor) use ($date_from, $date_to) {
+        ->map(function ($vendor) use ($from, $to) {
             // Ensure payments is always a collection, even if no payments exist
             $payment = $vendor->payment ?: collect(); // Default to empty collection if no payments
 
             // Filter payments by the date range and calculate the total for each business
-            $filteredPayment = $payment->filter(function ($payment) use ($date_from, $date_to) {
-                return $payment->due_date >= $date_from && $payment->due_date <= $date_to;
+            $filteredPayment = $payment->filter(function ($payment) use ($from, $to) {
+                return $payment->due_date >= $from && $payment->due_date <= $to;
             });
 
             // Calculate total payments for the vendor
@@ -48,6 +48,9 @@ class ReportController extends Controller
             return $vendor;
         });
 
+        
+
+        
         $pdf = PDF::loadView('Reports.financialReport', ['date_from' => $date_from, 'date_to' => $date_to, 'vendors' => $vendors, 'areas' => $areas])->setPaper('folio', 'landscape');
 
         return $pdf->stream('Reports.financialReport');

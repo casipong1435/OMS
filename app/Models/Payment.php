@@ -14,7 +14,9 @@ class Payment extends Model
         'amount',       // The amount due or paid
         'due_date',     // The date the payment was due
         'paid_at',      // The date the payment was completed (nullable for unpaid payments)
-        'remark'
+        'remark',
+        'days',
+        'penalty'
     ];
 
     // Relationships

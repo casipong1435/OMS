@@ -70,14 +70,14 @@ const isHistoryLinks = () => {
             <span class="ml-4">Dashboard</span>
             </Link>
         </li>
-        <li class="relative px-6 py-3">
+        <li v-if="$page.props.auth.user.status == 0" class="relative px-6 py-3">
             <span class="absolute inset-y-0 left-0 w-1  rounded-tr-lg rounded-br-lg"
                 :class="{ 'bg-orange-600': $page.component.startsWith('Vendor/Page/Business') }"
                 aria-hidden="true"></span>
             <Link
                 class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-100"
-                :class="{ 'text-gray-800 disabled:opacity-50 pointer-events-none': $page.component.startsWith('Vendor/Page/Business') }"
-                :href="route('user.business')">
+                :class="{ 'text-gray-800 disabled:opacity-50 pointer-events-none': $page.component.startsWith('Vendor/Page/Business') || $page.component.startsWith('Vendor/Page/BusinessList') }"
+                :href="route('user.businessList')">
             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                 stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -87,14 +87,14 @@ const isHistoryLinks = () => {
             <span class="ml-4">Business</span>
             </Link>
         </li>
-        <li class="relative px-6 py-3">
+        <li v-if="$page.props.auth.user.status == 0" class="relative px-6 py-3">
             <span class="absolute inset-y-0 left-0 w-1  rounded-tr-lg rounded-br-lg"
                 :class="{ 'bg-orange-600': $page.component.startsWith('Vendor/Page/Payment') }"
                 aria-hidden="true"></span>
             <Link
                 class="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150 hover:text-gray-800 dark:hover:text-gray-200 dark:text-gray-100"
-                :class="{ 'text-gray-800 disabled:opacity-50 pointer-events-none': $page.component.startsWith('Vendor/Page/Payment') }"
-                :href="route('user.payment')">
+                :class="{ 'text-gray-800 disabled:opacity-50 pointer-events-none': $page.component.startsWith('Vendor/Page/Payment') || $page.component.startsWith('Vendor/Page/PaymentList') }"
+                :href="route('user.paymentList')">
             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                 stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round"

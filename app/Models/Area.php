@@ -16,6 +16,7 @@ class Area extends Model
         'long',
         'image',
         'description',
+        'floor_plan',
     ];
 
     public function establishment() : HasMany

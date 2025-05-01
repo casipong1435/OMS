@@ -89,6 +89,8 @@ class AuthenticatedSessionController extends Controller
             case 'mayor':
                 return redirect()->intended(route('mayor.dashboard', absolute: false));
                 break;
+            default:
+                return redirect()->back();
         }
     }
 }

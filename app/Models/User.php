@@ -26,7 +26,8 @@ class User extends Authenticatable
         //0=user, 1=admin, 2=ceedo, 3=treasurer, 4=mayor
         'role',
         //0 = active, 1 = restricted
-        'status'
+        'status',
+        'vendor'
     ];
 
     /**

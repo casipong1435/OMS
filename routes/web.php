@@ -35,8 +35,10 @@ Route::middleware(['auth', 'user-role:user'])->prefix('vendor')->group(function(
 
         //GET ROUTES
         Route::get('/dashboard', 'dashboard')->name('user.dashboard');
-        Route::get('/business', 'business')->name('user.business');
-        Route::get('/payment', 'payment')->name('user.payment');
+        Route::get('/business/{id}', 'business')->name('user.business');
+        Route::get('/business-list', 'businessList')->name('user.businessList');
+        Route::get('/payment/{id}', 'payment')->name('user.payment');
+        Route::get('/payment-list', 'paymentList')->name('user.paymentList');
         Route::get('/profile', 'profile')->name('user.profile');
 
         //POST ROUTES
@@ -82,7 +84,8 @@ Route::middleware(['auth', 'user-role:ceedo'])->prefix('ceedo')->group(function(
         Route::get('/applications', 'applications')->name('ceedo.applications');
         Route::get('/closed_business', 'closed_business')->name('ceedo.closed_business');
         Route::get('/application-info/{id}', 'applicationInfo')->name('ceedo.applicationInfo');
-        Route::get('/vendor-profile/{id}', 'vendorProfile')->name('ceedo.vendorProfile');
+        Route::get('/vendor-profile/{id}/{business_id}', 'vendorProfile')->name('ceedo.vendorProfile');
+        Route::get('/business-info/{id}', 'business_info')->name('ceedo.business_info');
         Route::get('/compliance', 'compliance')->name('ceedo.compliance');
         Route::get('/payment-due', 'payment_due')->name('ceedo.payment-due');
         Route::get('/renewal', 'renewal')->name('ceedo.renewal');
@@ -115,7 +118,9 @@ Route::middleware(['auth', 'user-role:ceedo'])->prefix('ceedo')->group(function(
         Route::put('/decline-application/{id}', 'declineApplication')->name('ceedo.declineApplication');
         Route::put('/close-business/{id}', 'closeBusiness')->name('ceedo.closeBusiness');
         Route::put('/reopen-business/{id}', 'reopenBusiness')->name('ceedo.reopenBusiness');
-        
+
+        Route::put('/response-permit-request', 'respondPermitUpdate')->name('ceedo.respondPermitUpdate');
+        Route::put('/upload-floorplan', 'uploadFloorPlan')->name('ceedo.uploadFloorPlan');
         //DELETE ROUTES
         Route::delete('/establishments/unit/{id}', 'deleteUnit')->name('ceedo.stall-delete');
         Route::delete('/deleteActivity', 'deleteActivities')->name('ceedo.deleteActivities');
@@ -154,7 +159,7 @@ Route::middleware(['auth', 'user-role:mayor'])->prefix('mayor')->group(function(
         Route::get('/business-sections/{id}', 'sections')->name('mayor.business-sections');
         Route::get('/financial-monitoring', 'financial_monitoring')->name('mayor.financial-monitoring');
         Route::get('/compliance', 'compliance')->name('mayor.compliance');
-        Route::get('/vendor-profile/{id}', 'vendorProfile')->name('mayor.vendorProfile');
+        Route::get('/vendor-profile/{id}/{business_id}', 'vendorProfile')->name('mayor.vendorProfile');
         Route::get('/operations-report', 'operations_report')->name('mayor.operations-report');
         Route::get('/vendors-report', 'vendors_report')->name('mayor.vendors-report');
         Route::get('/compliance-report', 'compliance_report')->name('mayor.compliance-report');

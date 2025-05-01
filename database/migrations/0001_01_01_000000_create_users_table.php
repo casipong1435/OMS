@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('password');
             $table->tinyInteger('role');
             $table->tinyInteger('status')->default(0);
+            $table->tinyInteger('vednor')->default(0);
             $table->timestamp('mobile_number_verified_at')->nullable();
             $table->rememberToken();
             $table->timestamps();

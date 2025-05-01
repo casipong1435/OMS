@@ -19,8 +19,8 @@ const getFullName = (first_name, middle_name, last_name) => {
     );
 };
 
-function goToRoute(id){
-  window.location.href = route('mayor.vendorProfile', id);
+function goToRoute(id, business_id){
+  window.location.href = route('mayor.vendorProfile', {id:id, business_id:business_id});
 }
 
 </script>
@@ -64,7 +64,7 @@ function goToRoute(id){
             <tbody class="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
               <tr v-for="business in usePage().props.businesses" :key="business.index" class="text-gray-700 dark:text-gray-400">
                 <td class="px-4 py-3">{{ business.id }}</td>
-                <td class="px-4 py-4 text-blue-700 cursor-pointer" @click="goToRoute(business.profile_id)">{{ getFullName(business.profile.first_name, business.profile.middle_name, business.profile.last_name) }}</td>
+                <td class="px-4 py-4 text-blue-700 cursor-pointer" @click="goToRoute(business.profile_id, business.id)">{{ getFullName(business.profile.first_name, business.profile.middle_name, business.profile.last_name) }}</td>
                 <td class="px-4 py-3">{{ business.name }}</td>
                 <td class="px-4 py-3">{{ business.permit_number }}</td>
                 <td class="px-4 py-3">{{ business.permit_expiration_date }}</td>

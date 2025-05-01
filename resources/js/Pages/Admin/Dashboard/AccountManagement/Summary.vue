@@ -137,13 +137,13 @@ onMounted(() => {
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <!-- Total Officials -->
         <div class="bg-white shadow-lg rounded-lg p-6 border border-gray-100">
-          <h2 class="text-xl font-semibold text-gray-800">Total Officials</h2>
+          <h2 class="text-xl font-semibold text-gray-800">Total System Admins</h2>
           <div class="text-4xl font-bold text-blue-600">{{ totalOfficials }}</div>
         </div>
 
         <!-- Total Non-Officials -->
         <div class="bg-white shadow-lg rounded-lg p-6 border border-gray-100">
-          <h2 class="text-xl font-semibold text-gray-800">Total Non-Officials</h2>
+          <h2 class="text-xl font-semibold text-gray-800">Total Vendor/Applicants</h2>
           <div class="text-4xl font-bold text-red-600">{{ totalNonOfficials }}</div>
         </div>
 

@@ -29,4 +29,6 @@ class RequirementImage extends Model
     {
         return $this->belongsTo(Business::class);
     }
+
+    
 }

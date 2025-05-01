@@ -201,6 +201,10 @@ const selectedSum = computed(() => {
                                     <span class="text-lg font-semibold text-gray-800">{{ '₱' + selectedSum }}</span>
                                 </div>
                                 <div>
+                                    <span class="block text-sm font-medium text-gray-500">Penalty</span>
+                                    <span class="text-lg font-semibold text-gray-800">{{ '₱' + payments[0].penalty.toFixed(2) + ' (5% of amount per missed cycle)' }}</span>
+                                </div>
+                                <div>
                                     <span class="block text-sm font-medium text-gray-500">Due Date</span>
                                     <span class="text-lg font-semibold text-gray-800">{{ usePage().props.payments.length > 0 ? new
                                         Date(payments[0].due_date).toLocaleDateString() : 'Not Yet' }}</span>
@@ -231,6 +235,7 @@ const selectedSum = computed(() => {
                                     <th class="px-4 py-3 text-start">No. of Days</th>
                                     <th class="px-4 py-3 text-start">Due Date</th>
                                     <th class="px-4 py-3 text-start">Amount</th>
+                                    <th class="px-4 py-3 text-start">Penalty</th>
                                     <th class="px-4 py-3">Status</th>
                                 </tr>
                             </thead>
@@ -244,6 +249,7 @@ const selectedSum = computed(() => {
                                     <td class="px-4 py-3 text-start">{{ new Date(payment.due_date).toLocaleDateString()
                                         }}</td>
                                     <td class="px-4 py-3 text-start">{{ '₱' + payment.amount }}</td>
+                                    <td class="px-4 py-3 text-start">{{ '₱' + payment.penalty.toFixed(2) }}</td>
                                     <td class="badge px-4 py-3 text-start"
                                         :class="{ 'badge-error': payment.status != 'Not Yet' }">{{
                                             payment.status }}</td>

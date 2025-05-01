@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Business;
 use App\Models\Establishment;
 use App\Models\EstablishmentImages;
 use App\Models\EstablishmentUnit;
+use App\Models\NewPermitRequest;
 use App\Models\Payment;
 use App\Models\Profile;
-use App\Models\Activity;
+use App\Models\RequirementImage;
 use App\Models\User;
 use App\Services\SMSNotificationServices;
 use App\Services\SystemNotificationServices;
@@ -36,6 +38,7 @@ class StaffController extends Controller
     public function dashboard(Request $request)
     {
         $year_selected = $request->input('year_selected', now()->year);
+        $selectedEstablishment = $request->input('newselectedEstablishment');
         // Total business operations (active businesses)
         $totalBusinessOperations = Business::where('status', 1)->count();
 
@@ -55,7 +58,7 @@ class StaffController extends Controller
         $totalStallsOccupied = EstablishmentUnit::where('status', 0)->count();
 
         // Total income from rented stalls or areas (assuming Payments table stores the transaction)
-        $totalIncome = Payment::whereYear('due_date', $year_selected)->sum('amount');
+        $totalIncome = Payment::whereYear('due_date', $year_selected)->sum('amount') + Payment::whereYear('due_date', $year_selected)->sum('penalty');
 
         // Monthly income breakdown
         $monthlyIncome = Payment::selectRaw('MONTH(due_date) as month, SUM(amount) as total')
@@ -89,6 +92,33 @@ class StaffController extends Controller
             })
             ->sortBy('name');
 
+            $establishments = Establishment::get(['id', 'name']);
+
+            $incomePerStall = EstablishmentUnit::with(['business.payment' => function ($query) use ($year_selected) {
+                // If a specific year is selected, filter payments based on due_date
+                if ($year_selected) {
+                    $query->whereYear('due_date', $year_selected);
+                }
+            }])
+            ->where('establishment_id', $selectedEstablishment)
+            ->get()
+            ->map(function($unit){
+
+                if($unit->business != null){
+                    $incomePerYear = $unit->business->payment->sum('amount');
+                }else{
+                    $incomePerYear = 0;
+                }
+    
+                return [
+                    'name' => $unit->id,
+                    'incomePerYear' => $incomePerYear,
+                ];
+
+            })->sortBy('id');
+
+            
+
         return Inertia::render('Ceedo/Dashboard/Summary', [
             'totalBusinessOperations' => $totalBusinessOperations,
             'totalVendorApplications' => $totalVendorApplications,
@@ -99,7 +129,10 @@ class StaffController extends Controller
             'totalIncome' => $totalIncome,
             'monthlyIncome' => $formattedMonthlyIncome,
             'yearlyIncome' => $yearlyIncome,
-            'year_selected' => $year_selected
+            'year_selected' => $year_selected,
+            'establishments' => $establishments,
+            'incomePerStall' => $incomePerStall,
+            'newselectedEstablishment' => $selectedEstablishment
         ]);
     }
 
@@ -153,26 +186,72 @@ class StaffController extends Controller
                 });
             })
             ->get();
-
+        
         return Inertia::render('Ceedo/Dashboard/Vendors/Application', compact('applicants'));
     }
 
     public function applicationInfo($id)
     {
-        $profile = Profile::with(['user', 'business.establishment_unit.establishment.area', 'business.requirement_image', 'region', 'province', 'city', 'barangay'])->where('id', $id)->first();
+
+       
+        $profile = Profile::whereHas('business', function ($query) use ($id) {
+            $query->where('id', $id);
+        })
+        ->with([
+            'user',
+            'business' => function ($query) use ($id) {
+                $query->where('id', $id);
+            },
+            'business.establishment_unit.establishment.area',
+            'business.requirement_image',
+            'region',
+            'province',
+            'city',
+            'barangay',
+        ])
+        ->first();
+
+       
         return Inertia::render('Ceedo/Dashboard/Vendors/ApplicationInfo', compact('profile'));
+
     }
 
-    public function vendorProfile($id)
+    public function vendorProfile($id, $business_id)
     {
-        $profile = Profile::with(['user', 'business.establishment_unit.establishment.area', 'business.requirement_image', 'region', 'province', 'city', 'barangay'])->where('id', $id)->first();
-        return Inertia::render('Ceedo/Dashboard/Vendors/VendorProfile', compact('profile'));
+
+        $profile = Profile::with([
+            'user',
+            'business' => function ($query) use ($business_id) {
+                $query->where('id', $business_id);
+            },
+            'business.establishment_unit.establishment.area',
+            'business.requirement_image',
+            'region',
+            'province',
+            'city',
+            'barangay',
+        ])
+        ->where('id', $id)
+        ->first();
+
+        $vendor_businesses = Business::whereIn('status', [1, 3] )->where('profile_id', $id)->get();
+        
+
+        return Inertia::render('Ceedo/Dashboard/Vendors/VendorProfile', compact('profile', 'vendor_businesses'));
     }
+
+    // Render Compliance vue
+    public function business_info($id)
+    {
+        $business_info = Business::with(['payment', 'requirement_image', 'establishment_unit.establishment.area'])->where('id', $id)->first();
+        return Inertia::render('Ceedo/Dashboard/Vendors/BusinessInfo', compact('business_info'));
+    }
+
 
     // Render Compliance vue
     public function compliance()
     {
-        return Inertia::render('Ceedo/Dashboard/Vendors/Compliance', ['role' => auth()->user()->role]);
+        return Inertia::render('Ceedo/Dashboard/Vendors/Compliance');
     }
 
     public function payment_due(Request $request)
@@ -237,6 +316,16 @@ class StaffController extends Controller
                 // Calculate the number of days and the amount
                 $days = $startDate->diffInDays($dueDate);  // Adjusted for partial cycles
                 $amount = $business->establishment_unit->establishment->rate * $days;
+                $penalty = 0;
+
+                // Check if overdue by more than one cycle
+                if ($status === 'Overdue') {
+                    // Calculate how many cycles have passed since the due date
+                    $overdueCycles = floor($dueDate->diffInMonths($currentDate) / $cycleInterval);
+
+                    // Sum penalties for each overdue cycle
+                    $penalty = $amount * 0.05 * $overdueCycles;
+                }
 
                 $payments[] = [
                     'due_date' => $dueDate,
@@ -244,6 +333,7 @@ class StaffController extends Controller
                     'rate' => $business->establishment_unit->establishment->rate,
                     'days' => $days,
                     'status' => $status,
+                    'penalty' => $penalty
                 ];
 
                 // Break the loop if the business is closed after this cycle
@@ -281,7 +371,10 @@ class StaffController extends Controller
     {
         $dateNow = Carbon::now('Asia/Manila');
         $businesses = Business::with('profile.user')->where('status', 1)->where('permit_expiration_date', '<', $dateNow)->get();
-        return Inertia::render('Ceedo/Dashboard/Vendors/Renewal', ['businesses' => $businesses]);
+        $requests = NewPermitRequest::with('business.profile.user')->where('status', 0)->orderBy('created_at', 'asc')->get();
+
+        //dd($requests);
+        return Inertia::render('Ceedo/Dashboard/Vendors/Renewal', ['businesses' => $businesses, 'requests' => $requests]);
     }
 
     // Render Establishment vue
@@ -303,16 +396,17 @@ class StaffController extends Controller
             ])
             ->get();
 
-        // dd($areas);
         return Inertia::render('Ceedo/Dashboard/Areas/Establishment', ['areas' => $areas]);
     }
 
     public function stalls($id)
     {
-        $name = Area::find($id)->name;
+        $area = Area::find($id);
+        $floorplanImage = $area->floor_plan;
         $establishments = Establishment::with(['establishment_units.business.profile', 'establishment_units.establishment_images'])->where('area_id', $id)->get();
         // dd($establishments);
-        return Inertia::render('Ceedo/Dashboard/Areas/Stall', ['establishments' => $establishments, 'name' => $name, 'id' => $id]);
+
+        return Inertia::render('Ceedo/Dashboard/Areas/Stall', ['establishments' => $establishments, 'name' => $area->name, 'id' => $id, 'floorplanImage' => $floorplanImage]);
     }
 
     public function closed_business(Request $request)
@@ -396,11 +490,10 @@ class StaffController extends Controller
         try {
             Area::create(['name' => $request->name, 'description' => $request->description, 'image' => $filename]);
 
-
             $activity = [
                 'user' => auth()->user()->id,
-                'activity' => "Added an area",
-                'details' => "You added an area named ".$request->name
+                'activity' => 'Added an area',
+                'details' => 'You added an area named ' . $request->name
             ];
 
             Activity::create($activity);
@@ -447,8 +540,8 @@ class StaffController extends Controller
 
             $activity = [
                 'user' => auth()->user()->id,
-                'activity' => "Edited an area",
-                'details' => "You edited the area ".$request->name
+                'activity' => 'Edited an area',
+                'details' => 'You edited the area ' . $request->name
             ];
 
             Activity::create($activity);
@@ -497,8 +590,8 @@ class StaffController extends Controller
 
             $activity = [
                 'user' => auth()->user()->id,
-                'activity' => "Add Area Section",
-                'details' => "You added ".$request->name." to ".$area_name
+                'activity' => 'Add Area Section',
+                'details' => 'You added ' . $request->name . ' to ' . $area_name
             ];
 
             Activity::create($activity);
@@ -523,8 +616,8 @@ class StaffController extends Controller
 
             $activity = [
                 'user' => auth()->user()->id,
-                'activity' => "Edited Section",
-                'details' => "You edited the section ".$request->name
+                'activity' => 'Edited Section',
+                'details' => 'You edited the section ' . $request->name
             ];
 
             Activity::create($activity);
@@ -548,8 +641,8 @@ class StaffController extends Controller
 
             $activity = [
                 'user' => auth()->user()->id,
-                'activity' => "Added Stalls",
-                'details' => "You added new stalls to ".$establishment_name
+                'activity' => 'Added Stalls',
+                'details' => 'You added new stalls to ' . $establishment_name
             ];
 
             Activity::create($activity);
@@ -619,6 +712,7 @@ class StaffController extends Controller
             Business::where('id', $id)->update(['status' => 1, 'date_approved' => $dateNow]);
 
             EstablishmentUnit::where('id', $business->establishment_unit_id)->update(['status' => 0]);
+            User::where('id', $business->profile->user_id)->update(['vendor' => 1]);
 
             $response = [
                 'status' => 1,
@@ -627,18 +721,18 @@ class StaffController extends Controller
                 'remarks' => ''
             ];
 
-            $this->smsNotification->SendApplicationResponse($response);
+            // $this->smsNotification->SendApplicationResponse($response);
 
             $activity = [
                 'user' => auth()->user()->id,
-                'activity' => "Approved Application",
-                'details' => "You approved the application of ".$business->profile->first_name." ".$business->profile->last_name
+                'activity' => 'Approved Application',
+                'details' => 'You approved the application of ' . $business->profile->first_name . ' ' . $business->profile->last_name
             ];
 
             Activity::create($activity);
-            
+
             $user = User::where('id', $business->profile->user_id)->first();
-            $message = "Congratulations! Your application for stall was approved.";
+            $message = 'Congratulations! Your application for stall was approved.';
             $this->systemNotification->sendNotification($user, $message);
 
             return redirect()->back()->with('success', 'Application Approved!');
@@ -672,14 +766,14 @@ class StaffController extends Controller
 
             $activity = [
                 'user' => auth()->user()->id,
-                'activity' => "Declinded Application",
-                'details' => "You declinded the application of ".$business->profile->first_name." ".$business->profile->last_name
+                'activity' => 'Declinded Application',
+                'details' => 'You declinded the application of ' . $business->profile->first_name . ' ' . $business->profile->last_name
             ];
 
             Activity::create($activity);
 
             $user = User::where('id', $business->profile->user_id)->first();
-            $message = "Sorry! Your application for stall was denied due to ".$request->remarks.".";
+            $message = 'Sorry! Your application for stall was denied due to ' . $request->remarks . '.';
             $this->systemNotification->sendNotification($user, $message);
 
             return redirect()->back()->with('success', 'Application Declined!');
@@ -710,14 +804,14 @@ class StaffController extends Controller
 
             $activity = [
                 'user' => auth()->user()->id,
-                'activity' => "Closed Business",
-                'details' => "You closed the business owned by ".$business->profile->first_name." ".$business->profile->last_name." due to ".$request->remarks."."
+                'activity' => 'Closed Business',
+                'details' => 'You closed the business owned by ' . $business->profile->first_name . ' ' . $business->profile->last_name . ' due to ' . $request->remarks . '.'
             ];
 
             Activity::create($activity);
 
             $user = User::where('id', $business->profile->user_id)->first();
-            $message = "Sorry! Your business was closed due to ".$request->remarks.". You can go to CEEDO office to appeal.";
+            $message = 'Sorry! Your business was closed due to ' . $request->remarks . '. You can go to CEEDO office to appeal.';
             $this->systemNotification->sendNotification($user, $message);
 
             return redirect()->back()->with('success', 'Business Closed!');
@@ -744,14 +838,14 @@ class StaffController extends Controller
 
             $activity = [
                 'user' => auth()->user()->id,
-                'activity' => "Closesd Business",
-                'details' => "You reopened the business owned by ".$business->profile->first_name." ".$business->profile->last_name."."
+                'activity' => 'Closesd Business',
+                'details' => 'You reopened the business owned by ' . $business->profile->first_name . ' ' . $business->profile->last_name . '.'
             ];
 
             Activity::create($activity);
 
             $user = User::where('id', $business->profile->user_id)->first();
-            $message = "Congratulations! Your business has been reopened. You can now continue your business operation";
+            $message = 'Congratulations! Your business has been reopened. You can now continue your business operation';
             $this->systemNotification->sendNotification($user, $message);
 
             return redirect()->back()->with('success', 'Business Reopened!');
@@ -770,65 +864,139 @@ class StaffController extends Controller
         }
     }
 
-    public function sendWarning(Request $request){
-        try{
+    public function sendWarning(Request $request)
+    {
+        try {
             $this->smsNotification->SendWarning($request->mobile_number);
             return redirect()->back()->with('success', 'Notification Sent!');
-        }catch(Exception $e){
+        } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
-    public function SendPaymentReminder(Request $request){
-        try{
+    public function SendPaymentReminder(Request $request)
+    {
+        try {
             $profile = Profile::with('user')->where('id', $request->profile_id)->first();
             $mobile_number = $profile->user->mobile_number;
-
+            $penalty = round($request->payment['penalty'], 2);
             $response = [
                 'recepient' => $mobile_number,
                 'due_date' => Carbon::parse($request->payment['due_date'])->format('m/d/Y'),
-                'amount' => $request->payment['amount']
+                'amount' => $request->payment['amount'],
+                'penalty' => $penalty
             ];
 
             $this->smsNotification->SendPaymentReminder($response);
 
             $user = User::where('id', $profile->user_id)->first();
 
-            $message = "Payment Reminder from CEEDO! Please pay your payment for ".Carbon::parse($request->payment['due_date'])->format('m/d/Y')." amounting to ₱".$request->payment['amount']." to avoid penalty or business closure.";
+            $message = 'Payment Reminder from CEEDO! Please pay your payment for ' . Carbon::parse($request->payment['due_date'])->format('m/d/Y') . ' amounting to ₱' . $request->payment['amount'] . ' and Penalty ₱' . $penalty . ' to avoid penalty or business closure.';
 
             $this->systemNotification->sendNotification($user, $message);
 
             return redirect()->back()->with('success', 'Notification Sent!');
-        }catch(Exception $e){
+        } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
-    public function deleteActivities(){
-        try{
+    public function deleteActivities()
+    {
+        try {
             Activity::query()->delete();
             return redirect()->back()->with('success', 'Activities Cleared!');
-        }catch(Exception $e){
+        } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
-    public function markasReadNotification($id){
-        try{
+    public function markasReadNotification($id)
+    {
+        try {
             $notification = auth()->user()->notifications->find($id);
             $notification->markAsRead();
             return redirect()->back();
-        }catch(Exception $e){
+        } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
-    public function markasReadAllNotification(){
-        try{
+    public function markasReadAllNotification()
+    {
+        try {
             $user = auth()->user();
             $user->unreadNotifications->markAsRead();
             return redirect()->back();
-        }catch(Exception $e){
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function respondPermitUpdate(Request $request)
+    {
+        try {
+            $request = $request->permitRequest;
+
+            $permitRequest = NewPermitRequest::with('business.profile.user')->where('id', $request['id'])->first();
+
+            $user = User::where('id', $permitRequest->business->profile->user->id)->first();
+
+            
+
+            if ($request['status'] == 1) {
+                NewPermitRequest::where('id', $request['id'])->update(['status' => 1]);
+                Business::where('id', $request['business_id'])->update(['permit_number' => $permitRequest->permit_number, 'permit_expiration_date' => $permitRequest->expiration_date]);
+                RequirementImage::where('business_id', $request['business_id'])->update(['business_permit' => $permitRequest->image]);
+
+                $message = 'Congratulations! Your Permit Update Request has been approved.';
+                $this->systemNotification->sendNotification($user, $message);
+                $this->smsNotification->SendPermitUpdateResponse($user->mobile_number, $request['status'],  $request['reason']);
+                return redirect()->back()->with('success', 'New Permit Approved!');
+            } else {
+                if ($request['reason'] == '' || $request['reason'] == null) {
+                    return redirect()->back()->with('error', 'Reason Required!');
+                }
+
+                NewPermitRequest::where('id', $request['id'])->update(['status' => 2, 'remark' => $request['reason']]);
+
+                $message = 'Sorry! Your Permit Update Request has been declined due to ' . $request['reason'] . '.';
+                $this->systemNotification->sendNotification($user, $message);
+                $this->smsNotification->SendPermitUpdateResponse($user->mobile_number, $request['status'], $request['reason']);
+                return redirect()->back()->with('success', 'New Permit Declined!');
+            }
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function uploadFloorPlan(Request $request)
+    {
+    
+        try {
+            
+            $id = $request->id;
+
+            $oldFloorplanImage = Area::where('id', $id)->first('floor_plan')->floor_plan;
+
+            
+            if ($request->hasFile('floorPlanImage')) {
+                $filename = time() . '.' . $request->floorPlanImage->getClientOriginalExtension();
+                if($oldFloorplanImage != null){
+                    $image_data = public_path('images/Areas/Establishment/' . $oldFloorplanImage);
+                    if (file_exists($image_data)) {
+                        unlink($image_data);
+                        
+                    } 
+                }
+                $request->floorPlanImage->move('images/Areas/Establishment/', $filename);
+            } else {
+                $filename = $oldFloorplanImage;
+            }
+
+            Area::where('id', $id)->update(['floor_plan' => $filename]);
+            return redirect()->back()->with('success', 'Floor Plan Updated!');
+        } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
